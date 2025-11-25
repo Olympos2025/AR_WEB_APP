@@ -1,5 +1,25 @@
 import JSZip from 'jszip';
-import { kml as kmlToGeoJSON } from '@tmcw/togeojson';
+
+type TogeojsonModule = { kml: (dom: Document) => unknown };
+
+let togeojsonPromise: Promise<TogeojsonModule> | null = null;
+
+async function loadTogeojson(): Promise<TogeojsonModule> {
+  if (!togeojsonPromise) {
+    // Use CDN import to avoid local npm installation issues while keeping the
+    // library version explicit and cacheable by the browser.
+    togeojsonPromise = import(
+      /* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/@tmcw/togeojson@5.0.1/dist/togeojson.es.js'
+    ) as Promise<TogeojsonModule>;
+  }
+  return togeojsonPromise;
+}
+
+export async function parseKmlString(text: string): Promise<GeoJSON.FeatureCollection> {
+  const dom = new DOMParser().parseFromString(text, 'text/xml');
+  const { kml } = await loadTogeojson();
+  return kml(dom) as GeoJSON.FeatureCollection;
+}
 
 export async function parseKmlOrKmz(file: File): Promise<GeoJSON.FeatureCollection> {
   const extension = file.name.toLowerCase();
@@ -7,8 +27,7 @@ export async function parseKmlOrKmz(file: File): Promise<GeoJSON.FeatureCollecti
     return parseKmz(file);
   }
   const text = await file.text();
-  const dom = new DOMParser().parseFromString(text, 'text/xml');
-  return kmlToGeoJSON(dom) as GeoJSON.FeatureCollection;
+  return parseKmlString(text);
 }
 
 async function parseKmz(file: File): Promise<GeoJSON.FeatureCollection> {
@@ -19,8 +38,7 @@ async function parseKmz(file: File): Promise<GeoJSON.FeatureCollection> {
     throw new Error('No KML found inside KMZ');
   }
   const content = await zip.files[kmlFile].async('text');
-  const dom = new DOMParser().parseFromString(content, 'text/xml');
-  return kmlToGeoJSON(dom) as GeoJSON.FeatureCollection;
+  return parseKmlString(content);
 }
 
 export function listFeatures(collection: GeoJSON.FeatureCollection) {

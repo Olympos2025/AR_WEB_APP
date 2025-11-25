@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "aframe": "^1.5.0",
-    "@tmcw/togeojson": "^5.0.1",
     "geodesy": "^2.4.1",
     "jszip": "^3.10.1",
     "maplibre-gl": "^4.7.0",

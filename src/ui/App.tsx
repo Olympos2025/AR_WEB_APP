@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl, { Map } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { parseKmlOrKmz, listFeatures } from '../geo/kmlLoader';
+import { parseKmlOrKmz, listFeatures, parseKmlString } from '../geo/kmlLoader';
 import { OverlayOptions } from '../ar/arScene';
 import { useARRenderer } from '../ar/arRenderer';
 import en from '../i18n/en.json';
@@ -113,8 +113,7 @@ function App() {
   }
 
   async function loadSample() {
-    const dom = new DOMParser().parseFromString(sample, 'text/xml');
-    const geojson = (await import('@tmcw/togeojson')).kml(dom) as GeoJSON.FeatureCollection;
+    const geojson = await parseKmlString(sample);
     setCollection(geojson);
   }
 
