@@ -31,37 +31,9 @@ Runs unit tests for geometry helpers and simplification.
 
 ## Deployment
 ### GitHub Pages
-1. Enable Pages from the repository settings, target the `dist` folder on the `main` branch or use GitHub Actions.
-2. Build locally and push `dist/`, or create a Pages workflow:
-```
-name: Deploy
-on: [push]
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: npm ci
-      - run: npm run build
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
-```
+1. Push this repository to GitHub (e.g., `fieldar-web-ar`) and enable Pages → **Source: GitHub Actions**.
+2. The included workflow `.github/workflows/deploy.yml` will build and publish `dist/` automatically on each push to `main`.
+3. After the first successful run, your live URL will be `https://<your-username>.github.io/<repository-name>/` (for example `https://example.github.io/fieldar-web-ar/`).
 
 ### Netlify
 ```
