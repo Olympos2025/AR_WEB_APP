@@ -3,9 +3,9 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  // Use a relative base so assets resolve correctly when deployed to GitHub Pages
-  // under a repository subpath.
-  base: './',
+  // Point assets to the repository subpath for GitHub Pages deployment.
+  // Local development remains unaffected.
+  base: '/AR_WEB_APP/',
   server: {
     host: true
   },
