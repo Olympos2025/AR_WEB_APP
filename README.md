@@ -17,6 +17,10 @@ npm run dev
 ```
 Open the printed HTTPS tunnel or localhost URL in a modern browser. AR sensors require HTTPS on mobile.
 
+### Live URL
+- This sandbox has not been pushed to GitHub yet, so no public URL exists.
+- After you push to GitHub and let the Pages workflow run, the app will be available at `https://<your-username>.github.io/<repository-name>/` (example: `https://example.github.io/fieldar-web-ar/`).
+
 ### Building
 ```
 npm run build
