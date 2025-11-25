@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Sample Field</name>
+    <Placemark>
+      <name>Field Boundary</name>
+      <Polygon>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>
+              22.4191,39.639,0
+              22.4201,39.639,0
+              22.4201,39.640,0
+              22.4191,39.640,0
+              22.4191,39.639,0
+            </coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+    <Placemark>
+      <name>Access Road</name>
+      <LineString>
+        <coordinates>
+          22.4191,39.639,0
+          22.4185,39.6385,0
+        </coordinates>
+      </LineString>
+    </Placemark>
+    <Placemark>
+      <name>Water Valve</name>
+      <Point>
+        <coordinates>22.4196,39.6395,0</coordinates>
+      </Point>
+    </Placemark>
+  </Document>
+</kml>
