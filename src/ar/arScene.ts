@@ -37,6 +37,13 @@ export function clearScene(scene: HTMLElement) {
   children.forEach((c) => c.remove());
 }
 
+export function teardownScene(scene: HTMLElement) {
+  clearScene(scene);
+  if (scene.parentNode) {
+    scene.parentNode.removeChild(scene);
+  }
+}
+
 export function renderGeoJSON(
   scene: HTMLElement,
   origin: LatLon,
