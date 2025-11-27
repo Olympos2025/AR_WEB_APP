@@ -4,6 +4,7 @@ import type { Geometry } from 'geojson';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { parseKmlOrKmz, listFeatures, parseKmlString } from '../geo/kmlLoader';
 import { OverlayOptions } from '../ar/arScene';
+import { useARRenderer } from '../ar/arRenderer';
 import ARView from '../ar/ARView';
 import { PermissionState } from '../ar/sensors';
 import en from '../i18n/en.json';
@@ -219,18 +220,40 @@ function App() {
   const [origin, setOrigin] = useState<LatLon | null>(null);
   const [options, setOptions] = useState<OverlayOptions>(defaultOptions);
   const [arEnabled, setArEnabled] = useState(false);
-  const [permissionError, setPermissionError] = useState(false);
+  const [permissionError, setPermissionError] = useState<string | null>(null);
+  const [permission, setPermission] = useState<PermissionState>('idle');
   const [basemap, setBasemap] = useState<BaseMapKey>('standard');
   const mapRef = useRef<Map | null>(null);
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const [featureBounds, setFeatureBounds] = useState<maplibregl.LngLatBounds | null>(null);
+  const arContainer = useRef<HTMLDivElement | null>(null);
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const [heading, setHeading] = useState<number | null>(null);
+  const [overlayCount, setOverlayCount] = useState(0);
 
-  const { gpsAccuracy, heading, permission } = useARRenderer({
+  const { gpsAccuracy: arGpsAccuracy, heading: arHeading, permission: arPermission } = useARRenderer({
     data: collection,
     origin,
     options,
     active: arEnabled,
+    mount: arContainer.current ?? undefined,
   });
+
+  useEffect(() => {
+    if (arGpsAccuracy !== null) {
+      setGpsAccuracy(arGpsAccuracy);
+    }
+  }, [arGpsAccuracy]);
+
+  useEffect(() => {
+    if (arHeading !== null) {
+      setHeading(arHeading);
+    }
+  }, [arHeading]);
+
+  useEffect(() => {
+    setPermission(arPermission as PermissionState);
+  }, [arPermission]);
 
   useEffect(() => {
     if (!navigator.geolocation) return;
