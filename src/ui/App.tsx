@@ -46,6 +46,7 @@ function App() {
   const [overlayCount, setOverlayCount] = useState(0);
   const mapRef = useRef<Map | null>(null);
   const mapContainer = useRef<HTMLDivElement | null>(null);
+  const arContainer = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -167,17 +168,29 @@ function App() {
     setCollection(geojson);
   }
 
-  function toggleAR() {
-    if (!secure) {
-      // Ενημέρωση χρήστη, αλλά μην μπλοκάρεις το toggle.
-      setPermissionError(true);
+  useEffect(() => {
+    if (permission === 'denied') {
+      setPermissionError(t.permissionDenied);
+      setArEnabled(false);
+    } else if (permission === 'granted') {
+      setPermissionError(null);
     }
-    setArEnabled((prev) => !prev);
+  }, [permission, t.permissionDenied]);
+
+  function startAR() {
+    if (!secure) {
+      setPermissionError(t.httpsWarning);
+    }
+    setArEnabled(true);
+  }
+
+  function stopAR() {
+    setArEnabled(false);
   }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50">
-      <header className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
+      <header className="flex flex-col gap-3 px-4 py-3 border-b border-slate-800 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <img src="/AR_WEB_APP/assets/logo.svg" alt="FieldAR" className="w-10 h-10" />
           <div>
@@ -185,14 +198,28 @@ function App() {
             <p className="text-xs text-slate-400">{t.permissionsWarning}</p>
           </div>
         </div>
-        <select
-          value={lang}
-          onChange={(e) => setLang(e.target.value as Lang)}
-          className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm"
-        >
-          <option value="el">Ελληνικά</option>
-          <option value="en">English</option>
-        </select>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={lang}
+            onChange={(e) => setLang(e.target.value as Lang)}
+            className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm"
+          >
+            <option value="el">Ελληνικά</option>
+            <option value="en">English</option>
+          </select>
+          <button
+            onClick={startAR}
+            className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded shadow text-sm"
+          >
+            {t.startAR}
+          </button>
+          <button
+            onClick={stopAR}
+            className="bg-slate-800 px-3 py-2 rounded text-sm border border-slate-700"
+          >
+            {t.stopAR}
+          </button>
+        </div>
       </header>
 
       {!secure && (
@@ -201,8 +228,8 @@ function App() {
         </div>
       )}
 
-      <main className="p-4 grid gap-4 lg:grid-cols-[2fr,1fr]">
-        <section className="space-y-3">
+      <main className="p-4 flex flex-col gap-4 lg:grid lg:grid-cols-[2fr,1fr] lg:items-start">
+        <section className="space-y-4">
           <div className="flex gap-2 flex-wrap">
             <label className="inline-flex items-center gap-2 text-sm bg-slate-900 border border-slate-800 px-3 py-2 rounded cursor-pointer">
               <input
@@ -220,12 +247,6 @@ function App() {
               {t.loadSample}
             </button>
             <button
-              onClick={toggleAR}
-              className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded shadow"
-            >
-              {arEnabled ? 'Stop AR' : t.startAR}
-            </button>
-            <button
               onClick={() => setArEnabled(false)}
               className="bg-slate-800 px-3 py-2 rounded text-sm border border-slate-700"
             >
@@ -233,16 +254,40 @@ function App() {
             </button>
           </div>
 
+          <div className="relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900 h-[60vh] min-h-[320px]">
+            <div ref={arContainer} className="absolute inset-0" />
+            {!arEnabled && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-950/80 backdrop-blur">
+                <p className="text-lg font-semibold">{t.arInactive}</p>
+                <p className="text-sm text-slate-300 text-center max-w-md">{t.arIntro}</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={startAR}
+                    className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded shadow text-sm"
+                  >
+                    {t.startAR}
+                  </button>
+                  <button
+                    onClick={loadSample}
+                    className="bg-slate-800 px-3 py-2 rounded text-sm border border-slate-700"
+                  >
+                    {t.loadSample}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          {permissionError && (
+            <p className="text-sm text-amber-200">{permissionError}</p>
+          )}
+
           <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <h2 className="text-lg font-semibold mb-2">Mini-map</h2>
+            <div className="space-y-2">
+              <h2 className="text-lg font-semibold">Mini-map</h2>
               <div
                 ref={mapContainer}
                 className="h-64 rounded border border-slate-800 overflow-hidden"
               />
-              {permissionError && !arEnabled && (
-                <p className="text-sm text-amber-200 mt-2">{t.fallback}</p>
-              )}
             </div>
             <LayerControls options={options} onChange={setOptions} t={t} />
           </div>
@@ -260,10 +305,10 @@ function App() {
           <p className="text-xs text-slate-500">{t.accuracyDisclaimer}</p>
         </section>
 
-        <aside className="space-y-3">
-          <div className="bg-slate-900 border border-slate-800 p-3 rounded">
-            <h3 className="font-semibold mb-2">AR Status</h3>
-            <p className="text-sm">{arEnabled ? 'Active' : 'Inactive'}</p>
+        <aside className="space-y-3 lg:sticky lg:top-4 lg:self-start">
+          <div className="bg-slate-900 border border-slate-800 p-3 rounded space-y-1">
+            <h3 className="font-semibold mb-1">AR Status</h3>
+            <p className="text-sm">{arEnabled ? t.arActive : t.arInactive}</p>
             <p className="text-sm">
               {t.accuracy}:{' '}
               {gpsAccuracy ? `±${gpsAccuracy.toFixed(1)}m` : 'N/A'}
