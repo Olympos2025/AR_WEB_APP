@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { LatLon, smoothPositions } from '../geo/geoUtils';
-import { OverlayOptions, ensureScene, renderGeoJSON, clearScene } from './arScene';
+import { OverlayOptions, ensureScene, renderGeoJSON, teardownScene } from './arScene';
 
 type PermissionState = 'idle' | 'denied' | 'granted';
 
@@ -58,6 +58,7 @@ export function useARRenderer({ data, origin, options, active, mount }: Props) {
   }
 
   function startTracking() {
+    if (watchId.current !== null) return;
     if (!navigator.geolocation) return;
     watchId.current = navigator.geolocation.watchPosition(
       (pos) => {
@@ -92,6 +93,7 @@ export function useARRenderer({ data, origin, options, active, mount }: Props) {
       clearScene(sceneRef.current);
       sceneRef.current.style.display = 'none';
     }
+    positions.current = [];
   }
 
   return { gpsAccuracy, heading, permission };
