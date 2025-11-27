@@ -18,8 +18,9 @@ export interface OverlayOptions {
   transparency: number;
 }
 
-export function ensureScene(): HTMLElement {
-  let scene = document.querySelector('a-scene');
+export function ensureScene(parent?: HTMLElement): HTMLElement {
+  const target = parent ?? document.body;
+  let scene = target.querySelector('a-scene');
   if (!scene) {
     scene = document.createElement('a-scene');
     scene.setAttribute('embedded', '');
@@ -27,8 +28,18 @@ export function ensureScene(): HTMLElement {
     scene.setAttribute('renderer', 'logarithmicDepthBuffer: true;');
     scene.setAttribute('arjs', 'sourceType: webcam; debugUIEnabled: false;');
     scene.innerHTML = '<a-entity gps-camera rotation-reader></a-entity>';
-    document.body.appendChild(scene);
+    target.appendChild(scene);
+  } else if (scene.parentElement !== target) {
+    scene.parentElement.removeChild(scene);
+    target.appendChild(scene);
   }
+  scene.classList.add('fieldar-scene');
+  const style = scene.style;
+  style.width = '100%';
+  style.height = '100%';
+  style.position = 'absolute';
+  style.inset = '0';
+  style.display = style.display || 'none';
   return scene as HTMLElement;
 }
 

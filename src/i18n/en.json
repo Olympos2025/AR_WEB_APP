@@ -2,6 +2,7 @@
   "appTitle": "FieldAR",
   "loadFile": "Load KML/KMZ file",
   "startAR": "Start AR",
+  "stopAR": "Stop AR",
   "startMap": "Map only",
   "align": "Align",
   "fallback": "AR is unavailable. Using 2D map mode.",
@@ -27,5 +28,6 @@
   "labels": "Labels",
   "loadSample": "Load sample",
   "accuracyDisclaimer": "Overlays depend on consumer GPS and may deviate up to 10 meters.",
-  "retryPermissions": "Retry permissions"
+  "retryPermissions": "Retry permissions",
+  "basemap": "Basemap"
 }

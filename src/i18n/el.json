@@ -2,6 +2,7 @@
   "appTitle": "FieldAR",
   "loadFile": "Φόρτωση αρχείου KML/KMZ",
   "startAR": "Έναρξη AR",
+  "stopAR": "Διακοπή AR",
   "startMap": "Μόνο χάρτης",
   "align": "Ευθυγράμμιση",
   "fallback": "Το AR δεν είναι διαθέσιμο. Προβολή σε 2D χάρτη.",
@@ -27,5 +28,6 @@
   "labels": "Ετικέτες",
   "loadSample": "Φόρτωση δείγματος",
   "accuracyDisclaimer": "Οι επικαλύψεις βασίζονται σε GPS καταναλωτή και μπορεί να αποκλίνουν έως 10 μέτρα.",
-  "retryPermissions": "Επανάληψη αδειών"
+  "retryPermissions": "Επανάληψη αδειών",
+  "basemap": "Υπόβαθρο"
 }
