@@ -233,7 +233,7 @@ function App() {
               onClick={toggleAR}
               className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded shadow"
             >
-              {arEnabled ? 'Stop AR' : t.startAR}
+              {arEnabled ? t.stopAR : t.startAR}
             </button>
             <button
               onClick={() => setArEnabled(false)}
@@ -245,7 +245,7 @@ function App() {
 
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <h2 className="text-lg font-semibold mb-2">Mini-map</h2>
+              <h2 className="text-lg font-semibold mb-2">{t.miniMap}</h2>
               <div
                 ref={mapContainer}
                 className="h-64 rounded border border-slate-800 overflow-hidden"
@@ -272,16 +272,16 @@ function App() {
 
         <aside className="space-y-3">
           <div className="bg-slate-900 border border-slate-800 p-3 rounded">
-            <h3 className="font-semibold mb-2">AR Status</h3>
-            <p className="text-sm">{arEnabled ? 'Active' : 'Inactive'}</p>
+            <h3 className="font-semibold mb-2">{t.arStatus}</h3>
+            <p className="text-sm">{arEnabled ? t.arActive : t.arInactive}</p>
             <p className="text-sm">
               {t.accuracy}:{' '}
-              {gpsAccuracy ? `±${gpsAccuracy.toFixed(1)}m` : 'N/A'}
+              {gpsAccuracy ? `±${gpsAccuracy.toFixed(1)}m` : t.notAvailable}
             </p>
             <p className="text-sm">
-              Heading: {heading ? `${heading.toFixed(0)}°` : 'N/A'}
+              {t.heading}: {heading ? `${heading.toFixed(0)}°` : t.notAvailable}
             </p>
-            <p className="text-sm">Permission: {permission}</p>
+            <p className="text-sm">{t.permission}: {t[`permission.${permission}`]}</p>
           </div>
         </aside>
       </main>
