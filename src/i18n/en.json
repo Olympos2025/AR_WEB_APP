@@ -27,5 +27,6 @@
   "labels": "Labels",
   "loadSample": "Load sample",
   "accuracyDisclaimer": "Overlays depend on consumer GPS and may deviate up to 10 meters.",
-  "retryPermissions": "Retry permissions"
+  "retryPermissions": "Retry permissions",
+  "basemap": "Basemap"
 }
