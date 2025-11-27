@@ -3,7 +3,8 @@ import maplibregl, { Map } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { parseKmlOrKmz, listFeatures, parseKmlString } from '../geo/kmlLoader';
 import { OverlayOptions } from '../ar/arScene';
-import { useARRenderer } from '../ar/arRenderer';
+import ARView from '../ar/ARView';
+import { PermissionState } from '../ar/sensors';
 import en from '../i18n/en.json';
 import el from '../i18n/el.json';
 import { LatLon } from '../geo/geoUtils';
@@ -38,24 +39,21 @@ function App() {
   const [origin, setOrigin] = useState<LatLon | null>(null);
   const [options, setOptions] = useState<OverlayOptions>(defaultOptions);
   const [arEnabled, setArEnabled] = useState(false);
-  const [permissionError, setPermissionError] = useState<string | null>(null);
+  const [permissionError, setPermissionError] = useState(false);
+  const [permission, setPermission] = useState<PermissionState>('idle');
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const [heading, setHeading] = useState<number | null>(null);
+  const [overlayCount, setOverlayCount] = useState(0);
   const mapRef = useRef<Map | null>(null);
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const arContainer = useRef<HTMLDivElement | null>(null);
-
-  const { gpsAccuracy, heading, permission } = useARRenderer({
-    data: collection,
-    origin,
-    options,
-    active: arEnabled,
-    mount: arContainer.current ?? undefined,
-  });
 
   useEffect(() => {
     if (!navigator.geolocation) return;
 
     const id = navigator.geolocation.watchPosition(
       (pos) => {
+        setGpsAccuracy(pos.coords.accuracy ?? null);
         setOrigin({
           lat: pos.coords.latitude,
           lon: pos.coords.longitude,
@@ -319,9 +317,22 @@ function App() {
               Heading: {heading ? `${heading.toFixed(0)}°` : 'N/A'}
             </p>
             <p className="text-sm">Permission: {permission}</p>
+            <p className="text-sm">Visible overlays: {overlayCount}</p>
           </div>
         </aside>
       </main>
+
+      <ARView
+        data={collection}
+        active={arEnabled}
+        onStop={() => setArEnabled(false)}
+        onTelemetry={({ accuracy, heading, overlays, permission }) => {
+          setGpsAccuracy((prev) => accuracy ?? prev);
+          setHeading(heading);
+          setOverlayCount(overlays);
+          setPermission(permission);
+        }}
+      />
     </div>
   );
 }
