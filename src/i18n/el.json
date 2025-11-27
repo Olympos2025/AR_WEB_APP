@@ -2,6 +2,7 @@
   "appTitle": "FieldAR",
   "loadFile": "Φόρτωση αρχείου KML/KMZ",
   "startAR": "Έναρξη AR",
+  "stopAR": "Διακοπή AR",
   "startMap": "Μόνο χάρτης",
   "align": "Ευθυγράμμιση",
   "fallback": "Το AR δεν είναι διαθέσιμο. Προβολή σε 2D χάρτη.",

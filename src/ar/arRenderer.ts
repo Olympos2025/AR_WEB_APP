@@ -9,9 +9,10 @@ interface Props {
   origin: LatLon | null;
   options: OverlayOptions;
   active: boolean;
+  mount?: HTMLElement | null;
 }
 
-export function useARRenderer({ data, origin, options, active }: Props) {
+export function useARRenderer({ data, origin, options, active, mount }: Props) {
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [heading, setHeading] = useState<number | null>(null);
   const [permission, setPermission] = useState<PermissionState>('idle');
@@ -25,12 +26,13 @@ export function useARRenderer({ data, origin, options, active }: Props) {
       return;
     }
     if (!data) return;
-    const scene = ensureScene();
+    const scene = ensureScene(mount ?? undefined);
+    scene.style.display = 'block';
     sceneRef.current = scene;
     requestSensors();
     startTracking();
     return () => stop();
-  }, [active, data, options]);
+  }, [active, data, options, mount]);
 
   useEffect(() => {
     if (!active || !data || !origin || !sceneRef.current) return;
@@ -80,6 +82,7 @@ export function useARRenderer({ data, origin, options, active }: Props) {
   }
 
   function stop() {
+    positions.current = [];
     if (watchId.current !== null) {
       navigator.geolocation.clearWatch(watchId.current);
       watchId.current = null;
@@ -87,6 +90,7 @@ export function useARRenderer({ data, origin, options, active }: Props) {
     window.removeEventListener('deviceorientation', handleOrientation, true);
     if (sceneRef.current) {
       clearScene(sceneRef.current);
+      sceneRef.current.style.display = 'none';
     }
   }
 

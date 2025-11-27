@@ -2,6 +2,7 @@
   "appTitle": "FieldAR",
   "loadFile": "Load KML/KMZ file",
   "startAR": "Start AR",
+  "stopAR": "Stop AR",
   "startMap": "Map only",
   "align": "Align",
   "fallback": "AR is unavailable. Using 2D map mode.",
