@@ -57,6 +57,12 @@ const LayerControls: React.FC<Props> = ({ options, onChange, t }) => {
         <label className="space-y-1">
           <span className="text-slate-300">{t.lines} {options.lineWidth}px</span>
           <input
+            type="color"
+            value={options.lineColor}
+            onChange={(e) => onChange({ ...options, lineColor: e.target.value })}
+            className="w-full h-10 bg-slate-800 border border-slate-700 rounded"
+          />
+          <input
             type="range"
             min={1}
             max={8}
@@ -74,6 +80,18 @@ const LayerControls: React.FC<Props> = ({ options, onChange, t }) => {
             onChange={(e) => onChange({ ...options, pointColor: e.target.value })}
             className="w-full h-10 bg-slate-800 border border-slate-700 rounded"
           />
+        </label>
+        <label className="space-y-1">
+          <span className="text-slate-300">{t.pointSymbol}</span>
+          <select
+            value={options.pointSymbol}
+            onChange={(e) => onChange({ ...options, pointSymbol: e.target.value as OverlayOptions['pointSymbol'] })}
+            className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-2"
+          >
+            <option value="sphere">{t.symbolSphere}</option>
+            <option value="box">{t.symbolBox}</option>
+            <option value="cone">{t.symbolCone}</option>
+          </select>
         </label>
         <label className="space-y-1 col-span-2">
           <span className="text-slate-300">{t.transparency}: {(options.transparency * 100).toFixed(0)}%</span>

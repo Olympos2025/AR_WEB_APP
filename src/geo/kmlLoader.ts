@@ -2,6 +2,15 @@ import JSZip from 'jszip';
 
 type TogeojsonModule = { kml: (dom: Document) => unknown };
 
+const defaultStyles = {
+  fill: '#22d3ee',
+  fillOpacity: 0.25,
+  stroke: '#22c55e',
+  strokeOpacity: 1,
+  strokeWidth: 2,
+  markerColor: '#eab308',
+};
+
 let togeojsonPromise: Promise<TogeojsonModule> | null = null;
 
 async function loadTogeojson(): Promise<TogeojsonModule> {
@@ -18,7 +27,8 @@ async function loadTogeojson(): Promise<TogeojsonModule> {
 export async function parseKmlString(text: string): Promise<GeoJSON.FeatureCollection> {
   const dom = new DOMParser().parseFromString(text, 'text/xml');
   const { kml } = await loadTogeojson();
-  return kml(dom) as GeoJSON.FeatureCollection;
+  const collection = kml(dom) as GeoJSON.FeatureCollection;
+  return applyDefaultStyles(collection);
 }
 
 export async function parseKmlOrKmz(file: File): Promise<GeoJSON.FeatureCollection> {
@@ -50,4 +60,34 @@ export function listFeatures(collection: GeoJSON.FeatureCollection) {
       type: feature.geometry?.type || 'Unknown',
     };
   });
+}
+
+export function applyDefaultStyles(collection: GeoJSON.FeatureCollection): GeoJSON.FeatureCollection {
+  const features = collection.features.map((feature) => {
+    if (!feature.geometry) return feature;
+    const properties = { ...(feature.properties || {}) } as Record<string, unknown>;
+    const type = feature.geometry.type;
+
+    if (type === 'Polygon' || type === 'MultiPolygon') {
+      properties.fill ||= defaultStyles.fill;
+      properties['fill-opacity'] ||= defaultStyles.fillOpacity;
+      properties.stroke ||= defaultStyles.stroke;
+      properties['stroke-width'] ||= defaultStyles.strokeWidth;
+      properties['stroke-opacity'] ||= defaultStyles.strokeOpacity;
+    }
+
+    if (type === 'LineString' || type === 'MultiLineString') {
+      properties.stroke ||= defaultStyles.stroke;
+      properties['stroke-width'] ||= defaultStyles.strokeWidth;
+      properties['stroke-opacity'] ||= defaultStyles.strokeOpacity;
+    }
+
+    if (type === 'Point' || type === 'MultiPoint') {
+      properties['marker-color'] ||= defaultStyles.markerColor;
+    }
+
+    return { ...feature, properties };
+  });
+
+  return { ...collection, features };
 }

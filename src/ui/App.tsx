@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl, { Map } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { parseKmlOrKmz, listFeatures, parseKmlString } from '../geo/kmlLoader';
+import { applyDefaultStyles, listFeatures, parseKmlOrKmz, parseKmlString } from '../geo/kmlLoader';
 import { OverlayOptions } from '../ar/arScene';
 import { useARRenderer } from '../ar/arRenderer';
 import en from '../i18n/en.json';
@@ -10,7 +10,8 @@ import { LatLon } from '../geo/geoUtils';
 import LayerControls from './LayerControls';
 import CalibrationPanel from './CalibrationPanel';
 import FeatureList from './FeatureList';
-import sample from '../../examples/sample.kml?raw';
+import sampleKmlUrl from '../../examples/sample.kml?url';
+import sampleGeoJsonUrl from '../../examples/sample.geojson?url';
 
 const translations = { en, el } as const;
 type Lang = keyof typeof translations;
@@ -23,11 +24,74 @@ const defaultOptions: OverlayOptions = {
   lineColor: '#22c55e',
   lineWidth: 3,
   pointColor: '#eab308',
+  pointSymbol: 'sphere',
   showLabels: true,
   heightOffset: 0,
   simplifyTolerance: 1,
   transparency: 0,
 };
+
+const polygonFilter: maplibregl.ExpressionSpecification = [
+  'match',
+  ['geometry-type'],
+  ['Polygon', 'MultiPolygon'],
+  true,
+  false,
+];
+
+const lineFilter: maplibregl.ExpressionSpecification = [
+  'match',
+  ['geometry-type'],
+  ['LineString', 'MultiLineString'],
+  true,
+  false,
+];
+
+const pointFilter: maplibregl.ExpressionSpecification = [
+  'match',
+  ['geometry-type'],
+  ['Point', 'MultiPoint'],
+  true,
+  false,
+];
+
+function mapIconFromSymbol(symbol: OverlayOptions['pointSymbol']) {
+  switch (symbol) {
+    case 'box':
+      return 'square-stroked-15';
+    case 'cone':
+      return 'triangle-15';
+    default:
+      return 'marker-15';
+  }
+}
+
+function extendBounds(bounds: maplibregl.LngLatBounds, geometry: GeoJSON.Geometry) {
+  switch (geometry.type) {
+    case 'Point': {
+      const [lon, lat] = geometry.coordinates as [number, number];
+      bounds.extend([lon, lat]);
+      break;
+    }
+    case 'MultiPoint':
+      geometry.coordinates.forEach(([lon, lat]) => bounds.extend([lon, lat]));
+      break;
+    case 'LineString':
+      geometry.coordinates.forEach(([lon, lat]) => bounds.extend([lon, lat]));
+      break;
+    case 'MultiLineString':
+      geometry.coordinates.forEach((line) => line.forEach(([lon, lat]) => bounds.extend([lon, lat])));
+      break;
+    case 'Polygon':
+      geometry.coordinates.forEach((ring) => ring.forEach(([lon, lat]) => bounds.extend([lon, lat])));
+      break;
+    case 'MultiPolygon':
+      geometry.coordinates.forEach((poly) => poly.forEach((ring) => ring.forEach(([lon, lat]) => bounds.extend([lon, lat]))));
+      break;
+    default:
+      break;
+  }
+}
 
 const secure = typeof window !== 'undefined' ? window.isSecureContext : false;
 
@@ -37,6 +101,7 @@ function App() {
   const [collection, setCollection] = useState<GeoJSON.FeatureCollection | null>(null);
   const [origin, setOrigin] = useState<LatLon | null>(null);
   const [options, setOptions] = useState<OverlayOptions>(defaultOptions);
+  const [sampleFormat, setSampleFormat] = useState<'kml' | 'geojson'>('kml');
   const [arEnabled, setArEnabled] = useState(false);
   const [permissionError, setPermissionError] = useState(false);
   const mapRef = useRef<Map | null>(null);
@@ -89,65 +154,99 @@ function App() {
   useEffect(() => {
     if (!mapRef.current || !collection) return;
 
-    const geojsonSource = mapRef.current.getSource('kml') as maplibregl.GeoJSONSource;
+    const map = mapRef.current;
+    const updateLayers = () => {
+      const geojsonSource = map.getSource('kml') as maplibregl.GeoJSONSource;
+      if (geojsonSource) {
+        geojsonSource.setData(collection as any);
+      } else {
+        map.addSource('kml', { type: 'geojson', data: collection as any });
 
-    if (geojsonSource) {
-      geojsonSource.setData(collection as any);
-    } else {
-      mapRef.current.addSource('kml', { type: 'geojson', data: collection as any });
+        map.addLayer({
+          id: 'kml-fill',
+          type: 'fill',
+          source: 'kml',
+          filter: polygonFilter,
+          paint: {
+            'fill-color': options.polygonFill,
+            'fill-opacity': options.polygonOpacity * (1 - options.transparency),
+          },
+        });
 
-      mapRef.current.addLayer({
-        id: 'kml-fill',
-        type: 'fill',
-        source: 'kml',
-        paint: {
-          'fill-color': options.polygonFill,
-          'fill-opacity': options.polygonOpacity,
-        },
-      });
+        map.addLayer({
+          id: 'kml-outline',
+          type: 'line',
+          source: 'kml',
+          filter: polygonFilter,
+          paint: {
+            'line-color': options.polygonStroke,
+            'line-width': options.polygonWidth,
+            'line-opacity': 1 - options.transparency,
+          },
+        });
 
-      mapRef.current.addLayer({
-        id: 'kml-line',
-        type: 'line',
-        source: 'kml',
-        paint: {
-          'line-color': options.lineColor,
-          'line-width': options.lineWidth,
-        },
-      });
+        map.addLayer({
+          id: 'kml-line',
+          type: 'line',
+          source: 'kml',
+          filter: lineFilter,
+          paint: {
+            'line-color': options.lineColor,
+            'line-width': options.lineWidth,
+            'line-opacity': 1 - options.transparency,
+          },
+        });
 
-      mapRef.current.addLayer({
-        id: 'kml-point',
-        type: 'circle',
-        source: 'kml',
-        paint: {
-          'circle-color': options.pointColor,
-          'circle-radius': 6,
-        },
-      });
-    }
+        map.addLayer({
+          id: 'kml-point-circle',
+          type: 'circle',
+          source: 'kml',
+          filter: pointFilter,
+          paint: {
+            'circle-color': options.pointColor,
+            'circle-radius': 7,
+            'circle-stroke-color': '#0f172a',
+            'circle-stroke-width': 1,
+            'circle-opacity': 1 - options.transparency,
+          },
+          layout: {
+            visibility: options.pointSymbol === 'sphere' ? 'visible' : 'none',
+          },
+        });
 
-    const bounds = new maplibregl.LngLatBounds();
-
-    collection.features.forEach((f) => {
-      if (!f.geometry) return;
-
-      if (f.geometry.type === 'Point') {
-        const [lon, lat] = (f.geometry as GeoJSON.Point).coordinates;
-        bounds.extend([lon, lat]);
-      } else if (f.geometry.type === 'LineString') {
-        (f.geometry as GeoJSON.LineString).coordinates.forEach(([lon, lat]) =>
-          bounds.extend([lon, lat])
-        );
-      } else if (f.geometry.type === 'Polygon') {
-        (f.geometry as GeoJSON.Polygon).coordinates[0].forEach(([lon, lat]) =>
-          bounds.extend([lon, lat])
-        );
+        map.addLayer({
+          id: 'kml-point-symbol',
+          type: 'symbol',
+          source: 'kml',
+          filter: pointFilter,
+          layout: {
+            'icon-image': mapIconFromSymbol(options.pointSymbol),
+            'icon-size': 1.2,
+            visibility: options.pointSymbol === 'sphere' ? 'none' : 'visible',
+          },
+          paint: {
+            'icon-color': options.pointColor,
+            'icon-opacity': 1 - options.transparency,
+          },
+        });
       }
-    });
 
-    if (!bounds.isEmpty()) {
-      mapRef.current.fitBounds(bounds, { padding: 32 });
+      const bounds = new maplibregl.LngLatBounds();
+
+      collection.features.forEach((f) => {
+        if (!f.geometry) return;
+        extendBounds(bounds, f.geometry);
+      });
+
+      if (!bounds.isEmpty()) {
+        map.fitBounds(bounds, { padding: 32 });
+      }
+    };
+
+    if (!map.isStyleLoaded()) {
+      map.once('load', updateLayers);
+    } else {
+      updateLayers();
     }
   }, [collection, options]);
 
@@ -165,6 +264,44 @@ function App() {
     [collection]
   );
 
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+
+    const setPaint = (layer: string, property: string, value: any) => {
+      if (map.getLayer(layer)) {
+        map.setPaintProperty(layer, property as any, value as any);
+      }
+    };
+
+    const setLayout = (layer: string, property: string, value: any) => {
+      if (map.getLayer(layer)) {
+        map.setLayoutProperty(layer, property as any, value as any);
+      }
+    };
+
+    setPaint('kml-fill', 'fill-color', options.polygonFill);
+    setPaint('kml-fill', 'fill-opacity', options.polygonOpacity * (1 - options.transparency));
+
+    setPaint('kml-outline', 'line-color', options.polygonStroke);
+    setPaint('kml-outline', 'line-width', options.polygonWidth);
+    setPaint('kml-outline', 'line-opacity', 1 - options.transparency);
+
+    setPaint('kml-line', 'line-color', options.lineColor);
+    setPaint('kml-line', 'line-width', options.lineWidth);
+    setPaint('kml-line', 'line-opacity', 1 - options.transparency);
+
+    setPaint('kml-point-circle', 'circle-color', options.pointColor);
+    setPaint('kml-point-circle', 'circle-opacity', 1 - options.transparency);
+
+    setPaint('kml-point-symbol', 'icon-color', options.pointColor);
+    setPaint('kml-point-symbol', 'icon-opacity', 1 - options.transparency);
+
+    setLayout('kml-point-circle', 'visibility', options.pointSymbol === 'sphere' ? 'visible' : 'none');
+    setLayout('kml-point-symbol', 'visibility', options.pointSymbol === 'sphere' ? 'none' : 'visible');
+    setLayout('kml-point-symbol', 'icon-image', mapIconFromSymbol(options.pointSymbol));
+  }, [options]);
+
   async function onFile(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -173,7 +310,15 @@ function App() {
   }
 
   async function loadSample() {
-    const geojson = await parseKmlString(sample);
+    if (sampleFormat === 'geojson') {
+      const text = await fetch(sampleGeoJsonUrl).then((res) => res.text());
+      const geojson = applyDefaultStyles(JSON.parse(text));
+      setCollection(geojson);
+      return;
+    }
+
+    const text = await fetch(sampleKmlUrl).then((res) => res.text());
+    const geojson = await parseKmlString(text);
     setCollection(geojson);
   }
 
@@ -229,6 +374,14 @@ function App() {
             >
               {t.loadSample}
             </button>
+            <select
+              value={sampleFormat}
+              onChange={(e) => setSampleFormat(e.target.value as 'kml' | 'geojson')}
+              className="bg-slate-900 border border-slate-800 px-2 py-2 rounded text-sm"
+            >
+              <option value="kml">KML</option>
+              <option value="geojson">GeoJSON</option>
+            </select>
             <button
               onClick={toggleAR}
               className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded shadow"

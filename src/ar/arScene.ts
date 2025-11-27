@@ -12,6 +12,7 @@ export interface OverlayOptions {
   lineColor: string;
   lineWidth: number;
   pointColor: string;
+  pointSymbol: 'sphere' | 'box' | 'cone';
   showLabels: boolean;
   heightOffset: number;
   simplifyTolerance: number;
@@ -46,15 +47,45 @@ export function renderGeoJSON(
   clearScene(scene);
   collection.features.forEach((feature) => {
     if (!feature.geometry) return;
-    const type = feature.geometry.type;
-    if (type === 'Point') {
-      renderPoint(scene, origin, feature.geometry as GeoJSON.Point, feature.properties, options);
-    } else if (type === 'LineString') {
-      renderLine(scene, origin, feature.geometry as GeoJSON.LineString, options);
-    } else if (type === 'Polygon') {
-      renderPolygon(scene, origin, feature.geometry as GeoJSON.Polygon, options);
-    }
+    renderGeometry(scene, origin, feature.geometry, feature.properties, options);
   });
+}
+
+function renderGeometry(
+  scene: HTMLElement,
+  origin: LatLon,
+  geometry: GeoJSON.Geometry,
+  properties: any,
+  options: OverlayOptions
+) {
+  switch (geometry.type) {
+    case 'Point':
+      renderPoint(scene, origin, geometry, properties, options);
+      break;
+    case 'MultiPoint':
+      geometry.coordinates.forEach(([lon, lat, alt]) =>
+        renderPoint(scene, origin, { type: 'Point', coordinates: [lon, lat, alt] }, properties, options)
+      );
+      break;
+    case 'LineString':
+      renderLine(scene, origin, geometry, options);
+      break;
+    case 'MultiLineString':
+      geometry.coordinates.forEach((coords) =>
+        renderLine(scene, origin, { type: 'LineString', coordinates: coords }, options)
+      );
+      break;
+    case 'Polygon':
+      renderPolygon(scene, origin, geometry, options);
+      break;
+    case 'MultiPolygon':
+      geometry.coordinates.forEach((coords) =>
+        renderPolygon(scene, origin, { type: 'Polygon', coordinates: coords }, options)
+      );
+      break;
+    default:
+      break;
+  }
 }
 
 function renderPoint(
@@ -70,7 +101,15 @@ function renderPoint(
   entity.setAttribute('data-fieldar', 'point');
   entity.setAttribute('gps-entity-place', `latitude: ${lat}; longitude: ${lon};`);
   entity.setAttribute('position', `${pos.east} ${options.heightOffset + pos.up} ${-pos.north}`);
-  entity.setAttribute('geometry', 'primitive: sphere; radius: 0.8');
+  const primitive = options.pointSymbol;
+  const geometryProps =
+    primitive === 'cone'
+      ? 'primitive: cone; radiusBottom: 0.7; radiusTop: 0.1; height: 1.2'
+      : primitive === 'box'
+        ? 'primitive: box; depth: 1; height: 1; width: 1'
+        : 'primitive: sphere; radius: 0.8';
+
+  entity.setAttribute('geometry', geometryProps);
   entity.setAttribute('material', `color: ${options.pointColor}; opacity: ${1 - options.transparency}`);
   if (options.showLabels) {
     const text = document.createElement('a-text');
@@ -89,7 +128,10 @@ function renderLine(scene: HTMLElement, origin: LatLon, geometry: GeoJSON.LineSt
   const finalPoints = simplified.map((p) => `${p.east} ${options.heightOffset} ${-p.north}`).join(',');
   const entity = document.createElement('a-entity');
   entity.setAttribute('data-fieldar', 'line');
-  entity.setAttribute('line', `color: ${options.lineColor}; path: ${finalPoints}; linewidth: ${options.lineWidth}`);
+  entity.setAttribute(
+    'line',
+    `color: ${options.lineColor}; path: ${finalPoints}; linewidth: ${options.lineWidth}; opacity: ${1 - options.transparency}`
+  );
   scene.appendChild(entity);
 }
 
@@ -109,7 +151,10 @@ function renderPolygon(scene: HTMLElement, origin: LatLon, geometry: GeoJSON.Pol
     `shape: ${shape}; color: ${options.polygonFill}; opacity: ${options.polygonOpacity * (1 - options.transparency)};`
   );
   const outline = document.createElement('a-entity');
-  outline.setAttribute('line', `color: ${options.polygonStroke}; path: ${shape}; linewidth: ${options.polygonWidth}`);
+  outline.setAttribute(
+    'line',
+    `color: ${options.polygonStroke}; path: ${shape}; linewidth: ${options.polygonWidth}; opacity: ${1 - options.transparency}`
+  );
   poly.appendChild(outline);
   scene.appendChild(poly);
 }

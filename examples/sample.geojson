@@ -1,0 +1,46 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Trail"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [23.7162, 37.9792],
+          [23.7175, 37.983],
+          [23.7208, 37.9855]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Viewpoint"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [23.7195, 37.9815]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Park"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [23.7145, 37.9785],
+            [23.718, 37.9788],
+            [23.7185, 37.9812],
+            [23.7145, 37.9785]
+          ]
+        ]
+      }
+    }
+  ]
+}
