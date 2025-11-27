@@ -42,25 +42,42 @@ function App() {
   const mapRef = useRef<Map | null>(null);
   const mapContainer = useRef<HTMLDivElement | null>(null);
 
-  const { gpsAccuracy, heading, permission } = useARRenderer({ data: collection, origin, options, active: arEnabled });
+  const { gpsAccuracy, heading, permission } = useARRenderer({
+    data: collection,
+    origin,
+    options,
+    active: arEnabled,
+  });
 
   useEffect(() => {
     if (!navigator.geolocation) return;
+
     const id = navigator.geolocation.watchPosition(
       (pos) => {
-        setOrigin({ lat: pos.coords.latitude, lon: pos.coords.longitude, alt: pos.coords.altitude ?? 0 });
+        setOrigin({
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+          alt: pos.coords.altitude ?? 0,
+        });
+
         if (mapRef.current) {
           mapRef.current.setCenter([pos.coords.longitude, pos.coords.latitude]);
         }
       },
-      () => setPermissionError(true),
+      (err) => {
+        // Μην μπλοκάρεις το AR αν αποτύχει το GPS· απλώς γράψε στο console.
+        console.warn('Geolocation watchPosition error', err);
+        // setPermissionError(true);
+      },
       { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 }
     );
+
     return () => navigator.geolocation.clearWatch(id);
   }, []);
 
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
+
     mapRef.current = new maplibregl.Map({
       container: mapContainer.current,
       style: 'https://demotiles.maplibre.org/style.json',
@@ -71,39 +88,82 @@ function App() {
 
   useEffect(() => {
     if (!mapRef.current || !collection) return;
+
     const geojsonSource = mapRef.current.getSource('kml') as maplibregl.GeoJSONSource;
+
     if (geojsonSource) {
       geojsonSource.setData(collection as any);
     } else {
       mapRef.current.addSource('kml', { type: 'geojson', data: collection as any });
-      mapRef.current.addLayer({ id: 'kml-fill', type: 'fill', source: 'kml', paint: { 'fill-color': options.polygonFill, 'fill-opacity': options.polygonOpacity } });
-      mapRef.current.addLayer({ id: 'kml-line', type: 'line', source: 'kml', paint: { 'line-color': options.lineColor, 'line-width': options.lineWidth } });
-      mapRef.current.addLayer({ id: 'kml-point', type: 'circle', source: 'kml', paint: { 'circle-color': options.pointColor, 'circle-radius': 6 } });
+
+      mapRef.current.addLayer({
+        id: 'kml-fill',
+        type: 'fill',
+        source: 'kml',
+        paint: {
+          'fill-color': options.polygonFill,
+          'fill-opacity': options.polygonOpacity,
+        },
+      });
+
+      mapRef.current.addLayer({
+        id: 'kml-line',
+        type: 'line',
+        source: 'kml',
+        paint: {
+          'line-color': options.lineColor,
+          'line-width': options.lineWidth,
+        },
+      });
+
+      mapRef.current.addLayer({
+        id: 'kml-point',
+        type: 'circle',
+        source: 'kml',
+        paint: {
+          'circle-color': options.pointColor,
+          'circle-radius': 6,
+        },
+      });
     }
+
     const bounds = new maplibregl.LngLatBounds();
+
     collection.features.forEach((f) => {
       if (!f.geometry) return;
+
       if (f.geometry.type === 'Point') {
         const [lon, lat] = (f.geometry as GeoJSON.Point).coordinates;
         bounds.extend([lon, lat]);
       } else if (f.geometry.type === 'LineString') {
-        (f.geometry as GeoJSON.LineString).coordinates.forEach(([lon, lat]) => bounds.extend([lon, lat]));
+        (f.geometry as GeoJSON.LineString).coordinates.forEach(([lon, lat]) =>
+          bounds.extend([lon, lat])
+        );
       } else if (f.geometry.type === 'Polygon') {
-        (f.geometry as GeoJSON.Polygon).coordinates[0].forEach(([lon, lat]) => bounds.extend([lon, lat]));
+        (f.geometry as GeoJSON.Polygon).coordinates[0].forEach(([lon, lat]) =>
+          bounds.extend([lon, lat])
+        );
       }
     });
+
     if (!bounds.isEmpty()) {
       mapRef.current.fitBounds(bounds, { padding: 32 });
     }
   }, [collection, options]);
 
-  useEffect(() => {
-    if (permission === 'denied') {
-      setPermissionError(true);
-    }
-  }, [permission]);
+  // Δεν ανάβουμε πια permissionError για "denied".
+  // Αν θες ξανά αυστηρό fallback, ξε-σχόλιασε:
+  //
+  // useEffect(() => {
+  //   if (permission === 'denied') {
+  //     setPermissionError(true);
+  //   }
+  // }, [permission]);
 
-  const features = useMemo(() => (collection ? listFeatures(collection) : []), [collection]);
+  const features = useMemo(
+    () => (collection ? listFeatures(collection) : []),
+    [collection]
+  );
 
   async function onFile(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -119,8 +179,8 @@ function App() {
 
   function toggleAR() {
     if (!secure) {
+      // Ενημέρωση χρήστη, αλλά μην μπλοκάρεις το toggle.
       setPermissionError(true);
-      return;
     }
     setArEnabled((prev) => !prev);
   }
@@ -129,7 +189,7 @@ function App() {
     <div className="min-h-screen bg-slate-950 text-slate-50">
       <header className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
         <div className="flex items-center gap-3">
-          <img src="/assets/logo.svg" alt="FieldAR" className="w-10 h-10" />
+          <img src="/AR_WEB_APP/assets/logo.svg" alt="FieldAR" className="w-10 h-10" />
           <div>
             <h1 className="text-xl font-semibold">{t.appTitle}</h1>
             <p className="text-xs text-slate-400">{t.permissionsWarning}</p>
@@ -155,7 +215,12 @@ function App() {
         <section className="space-y-3">
           <div className="flex gap-2 flex-wrap">
             <label className="inline-flex items-center gap-2 text-sm bg-slate-900 border border-slate-800 px-3 py-2 rounded cursor-pointer">
-              <input type="file" accept=".kml,.kmz" className="hidden" onChange={onFile} />
+              <input
+                type="file"
+                accept=".kml,.kmz"
+                className="hidden"
+                onChange={onFile}
+              />
               <span>{t.loadFile}</span>
             </label>
             <button
@@ -181,8 +246,11 @@ function App() {
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <h2 className="text-lg font-semibold mb-2">Mini-map</h2>
-              <div ref={mapContainer} className="h-64 rounded border border-slate-800 overflow-hidden" />
-              {permissionError && (
+              <div
+                ref={mapContainer}
+                className="h-64 rounded border border-slate-800 overflow-hidden"
+              />
+              {permissionError && !arEnabled && (
                 <p className="text-sm text-amber-200 mt-2">{t.fallback}</p>
               )}
             </div>
@@ -206,8 +274,13 @@ function App() {
           <div className="bg-slate-900 border border-slate-800 p-3 rounded">
             <h3 className="font-semibold mb-2">AR Status</h3>
             <p className="text-sm">{arEnabled ? 'Active' : 'Inactive'}</p>
-            <p className="text-sm">{t.accuracy}: {gpsAccuracy ? `±${gpsAccuracy.toFixed(1)}m` : 'N/A'}</p>
-            <p className="text-sm">Heading: {heading ? `${heading.toFixed(0)}°` : 'N/A'}</p>
+            <p className="text-sm">
+              {t.accuracy}:{' '}
+              {gpsAccuracy ? `±${gpsAccuracy.toFixed(1)}m` : 'N/A'}
+            </p>
+            <p className="text-sm">
+              Heading: {heading ? `${heading.toFixed(0)}°` : 'N/A'}
+            </p>
             <p className="text-sm">Permission: {permission}</p>
           </div>
         </aside>
