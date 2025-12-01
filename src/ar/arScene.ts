@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { LatLon, toLocalGroundFrame } from '../geo/geoUtils';
-import { douglasPeucker, Vec2 } from '../geo/simplify';
+import { douglasPeucker } from '../geo/simplify';
 
 declare const AFRAME: any;
 
@@ -126,8 +126,8 @@ function renderLine(
   const points = geometry.coordinates.map(([lon, lat, alt]) =>
     toLocalGroundFrame(origin, { lat, lon, alt: alt ?? groundAltitude }, groundAltitude)
   );
-  const simplified = douglasPeucker(points.map(({ east, north }) => ({ east, north })), options.simplifyTolerance || 0);
-  const finalPoints = simplified.map((p) => `${p.east} ${p.up} ${-p.north}`).join(',');
+  const simplified = douglasPeucker(points, options.simplifyTolerance || 0);
+  const finalPoints = simplified.map((p) => `${p.east} ${p.up ?? 0} ${-p.north}`).join(',');
   const entity = document.createElement('a-entity');
   entity.setAttribute('data-fieldar', 'line');
   entity.setAttribute('line', `color: ${options.lineColor}; path: ${finalPoints}; linewidth: ${options.lineWidth}`);
@@ -149,16 +149,13 @@ function renderPolygon(
   const enu = outer.map(([lon, lat, alt]) =>
     toLocalGroundFrame(origin, { lat, lon, alt: alt ?? groundAltitude }, groundAltitude)
   );
-  const simplified = douglasPeucker(
-    enu.map(({ east, north }) => ({ east, north } as Vec2)),
-    options.simplifyTolerance || 0
-  );
+  const simplified = douglasPeucker(enu, options.simplifyTolerance || 0);
   if (simplified.length < 3) {
     console.warn('Skipping polygon after simplification due to insufficient vertices', geometry);
     return;
   }
   // Local y=0 corresponds to the estimated ground plane derived from the origin altitude.
-  const groundShape = simplified.map((p) => `${p.east} 0 ${-p.north}`).join(',');
+  const groundShape = simplified.map((p) => `${p.east} ${p.up ?? 0} ${-p.north}`).join(',');
 
   // Ground footprint
   const poly = document.createElement('a-entity');
@@ -178,14 +175,16 @@ function renderPolygon(
   for (let i = 0; i < simplified.length; i++) {
     const current = simplified[i];
     const next = simplified[(i + 1) % simplified.length];
+    const currentBase = current.up ?? 0;
+    const nextBase = next.up ?? 0;
     const segment = document.createElement('a-entity');
     segment.setAttribute('data-fieldar', 'polygon-fence');
     const path = [
-      `${current.east} 0 ${-current.north}`,
-      `${next.east} 0 ${-next.north}`,
-      `${next.east} ${fenceHeight} ${-next.north}`,
-      `${current.east} ${fenceHeight} ${-current.north}`,
-      `${current.east} 0 ${-current.north}`,
+      `${current.east} ${currentBase} ${-current.north}`,
+      `${next.east} ${nextBase} ${-next.north}`,
+      `${next.east} ${nextBase + fenceHeight} ${-next.north}`,
+      `${current.east} ${currentBase + fenceHeight} ${-current.north}`,
+      `${current.east} ${currentBase} ${-current.north}`,
     ].join(',');
     segment.setAttribute(
       'line',
