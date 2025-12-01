@@ -1,19 +1,5 @@
 import JSZip from 'jszip';
-
-type TogeojsonModule = { kml: (dom: Document) => unknown };
-
-let togeojsonPromise: Promise<TogeojsonModule> | null = null;
-
-async function loadTogeojson(): Promise<TogeojsonModule> {
-  if (!togeojsonPromise) {
-    // Use CDN import to avoid local npm installation issues while keeping the
-    // library version explicit and cacheable by the browser.
-    togeojsonPromise = import(
-      /* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/@tmcw/togeojson@5.0.1/dist/togeojson.es.js'
-    ) as Promise<TogeojsonModule>;
-  }
-  return togeojsonPromise;
-}
+import { kml as parseWithTogeojson } from '@tmcw/togeojson';
 
 export async function parseKmlString(text: string): Promise<GeoJSON.FeatureCollection> {
   const dom = new DOMParser().parseFromString(text, 'text/xml');
@@ -42,10 +28,9 @@ async function parseKmz(file: File): Promise<GeoJSON.FeatureCollection> {
   return parseKmlString(content);
 }
 
-async function tryParseWithTogeojson(dom: Document): Promise<GeoJSON.FeatureCollection | null> {
+function tryParseWithTogeojson(dom: Document): GeoJSON.FeatureCollection | null {
   try {
-    const { kml } = await loadTogeojson();
-    const result = normalizeFeatureCollection(kml(dom));
+    const result = normalizeFeatureCollection(parseWithTogeojson(dom));
     if (result.features.length > 0) {
       return result;
     }
