@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl, { Map } from 'maplibre-gl';
-import type { Geometry } from 'geojson';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { parseKmlOrKmz, listFeatures, parseKmlString } from '../geo/kmlLoader';
 import { OverlayOptions } from '../ar/arScene';
@@ -14,83 +13,11 @@ import LayerControls from './LayerControls';
 import CalibrationPanel from './CalibrationPanel';
 import FeatureList from './FeatureList';
 import sample from '../../examples/sample.kml?raw';
+import { baseMaps, BaseMapKey } from '../map/baseMaps';
+import { applyKmlLayers, computeFeatureBounds } from '../map/kmlLayers';
 
 const translations = { en, el } as const;
 type Lang = keyof typeof translations;
-
-const baseMaps = {
-  standard: {
-    label: 'OSM Standard',
-    style: {
-      version: 8,
-      sources: {
-        osm: {
-          type: 'raster',
-          tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-          tileSize: 256,
-          attribution: '© OpenStreetMap contributors',
-        },
-      },
-      layers: [
-        {
-          id: 'osm',
-          type: 'raster',
-          source: 'osm',
-        },
-      ],
-    },
-  },
-  dark: {
-    label: 'Dark Matter',
-    style: {
-      version: 8,
-      sources: {
-        dark: {
-          type: 'raster',
-          tiles: [
-            'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-            'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-            'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-          ],
-          tileSize: 256,
-          attribution: '© OpenStreetMap, © CartoDB',
-        },
-      },
-      layers: [
-        {
-          id: 'dark',
-          type: 'raster',
-          source: 'dark',
-        },
-      ],
-    },
-  },
-  imagery: {
-    label: 'Imagery',
-    style: {
-      version: 8,
-      sources: {
-        imagery: {
-          type: 'raster',
-          tiles: [
-            'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-          ],
-          tileSize: 256,
-          attribution: '© Esri & contributors',
-        },
-      },
-      layers: [
-        {
-          id: 'imagery',
-          type: 'raster',
-          source: 'imagery',
-        },
-      ],
-    },
-  },
-} as const;
-
-type BaseMapKey = keyof typeof baseMaps;
 
 const defaultOptions: OverlayOptions = {
   polygonFill: '#22d3ee',
@@ -107,111 +34,6 @@ const defaultOptions: OverlayOptions = {
 };
 
 const secure = typeof window !== 'undefined' ? window.isSecureContext : false;
-
-function extendBoundsFromGeometry(bounds: maplibregl.LngLatBounds, geometry: Geometry) {
-  switch (geometry.type) {
-    case 'Point': {
-      const [lon, lat] = geometry.coordinates as [number, number];
-      bounds.extend([lon, lat]);
-      break;
-    }
-    case 'LineString':
-      (geometry.coordinates as [number, number][]).forEach(([lon, lat]) =>
-        bounds.extend([lon, lat])
-      );
-      break;
-    case 'Polygon':
-      (geometry.coordinates as [number, number][][]).flat().forEach(([lon, lat]) =>
-        bounds.extend([lon, lat])
-      );
-      break;
-    case 'MultiPoint':
-      (geometry.coordinates as [number, number][]).forEach(([lon, lat]) =>
-        bounds.extend([lon, lat])
-      );
-      break;
-    case 'MultiLineString':
-      (geometry.coordinates as [number, number][][])
-        .flat()
-        .forEach(([lon, lat]) => bounds.extend([lon, lat]));
-      break;
-    case 'MultiPolygon':
-      (geometry.coordinates as [number, number][][][])
-        .flat(2)
-        .forEach(([lon, lat]) => bounds.extend([lon, lat]));
-      break;
-    case 'GeometryCollection':
-      geometry.geometries.forEach((g) => extendBoundsFromGeometry(bounds, g));
-      break;
-  }
-}
-
-function computeFeatureBounds(collection: GeoJSON.FeatureCollection) {
-  const bounds = new maplibregl.LngLatBounds();
-
-  collection.features.forEach((f) => {
-    if (!f.geometry) return;
-    extendBoundsFromGeometry(bounds, f.geometry as Geometry);
-  });
-
-  return bounds.isEmpty() ? null : bounds;
-}
-
-function applyKmlLayers(
-  map: Map,
-  data: GeoJSON.FeatureCollection,
-  options: OverlayOptions
-) {
-  const geojsonSource = map.getSource('kml') as maplibregl.GeoJSONSource | undefined;
-
-  if (geojsonSource) {
-    geojsonSource.setData(data as any);
-  } else {
-    map.addSource('kml', { type: 'geojson', data: data as any });
-  }
-
-  if (!map.getLayer('kml-fill')) {
-    map.addLayer({
-      id: 'kml-fill',
-      type: 'fill',
-      source: 'kml',
-      paint: {
-        'fill-color': options.polygonFill,
-        'fill-opacity': options.polygonOpacity,
-      },
-    });
-  }
-
-  if (!map.getLayer('kml-line')) {
-    map.addLayer({
-      id: 'kml-line',
-      type: 'line',
-      source: 'kml',
-      paint: {
-        'line-color': options.lineColor,
-        'line-width': options.lineWidth,
-      },
-    });
-  }
-
-  if (!map.getLayer('kml-point')) {
-    map.addLayer({
-      id: 'kml-point',
-      type: 'circle',
-      source: 'kml',
-      paint: {
-        'circle-color': options.pointColor,
-        'circle-radius': 6,
-      },
-    });
-  }
-
-  map.setPaintProperty('kml-fill', 'fill-color', options.polygonFill);
-  map.setPaintProperty('kml-fill', 'fill-opacity', options.polygonOpacity);
-  map.setPaintProperty('kml-line', 'line-color', options.lineColor);
-  map.setPaintProperty('kml-line', 'line-width', options.lineWidth);
-  map.setPaintProperty('kml-point', 'circle-color', options.pointColor);
-}
 
 function App() {
   const [lang, setLang] = useState<Lang>('el');
