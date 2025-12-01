@@ -15,6 +15,8 @@ interface Telemetry {
   heading: number | null;
   overlays: number;
   permission: PermissionState;
+  visibleFeatures: number;
+  totalFeatures: number;
 }
 
 interface Props {
@@ -25,6 +27,7 @@ interface Props {
 }
 
 const FIELD_OF_VIEW = 65; // degrees for simple projection
+export const VISIBLE_RADIUS_METERS = 50_000;
 
 export default function ARView({ data, active, onStop, onTelemetry }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -38,11 +41,18 @@ export default function ARView({ data, active, onStop, onTelemetry }: Props) {
   const [heading, setHeading] = useState<number | null>(null);
   const [permission, setPermission] = useState<PermissionState>('idle');
   const [overlayCount, setOverlayCount] = useState(0);
+  const [visibleFeatureCount, setVisibleFeatureCount] = useState(0);
+  const [totalFeatureCount, setTotalFeatureCount] = useState(0);
 
   const targets = useMemo(() => {
     if (!data || !origin) return [];
     return extractTargets({ origin, collection: data });
   }, [data, origin]);
+
+  useEffect(() => {
+    const distinctFeatures = new Set(targets.map((target) => target.featureIndex)).size;
+    setTotalFeatureCount(distinctFeatures || data?.features?.length || 0);
+  }, [targets, data]);
 
   useEffect(() => {
     if (!active) {
@@ -68,8 +78,15 @@ export default function ARView({ data, active, onStop, onTelemetry }: Props) {
   }, [targets, heading]);
 
   useEffect(() => {
-    onTelemetry?.({ accuracy, heading, overlays: overlayCount, permission });
-  }, [accuracy, heading, overlayCount, permission, onTelemetry]);
+    onTelemetry?.({
+      accuracy,
+      heading,
+      overlays: overlayCount,
+      permission,
+      visibleFeatures: visibleFeatureCount,
+      totalFeatures: totalFeatureCount,
+    });
+  }, [accuracy, heading, overlayCount, permission, visibleFeatureCount, totalFeatureCount, onTelemetry]);
 
   function startSensors() {
     stopGeo.current = startGeolocationWatch(
@@ -97,11 +114,14 @@ export default function ARView({ data, active, onStop, onTelemetry }: Props) {
       ctx.font = '16px sans-serif';
       ctx.fillText('Move your device to calibrate heading...', 16, 32);
       setOverlayCount(0);
+      setVisibleFeatureCount(0);
       return;
     }
 
-    const visible = targets.filter((t) => Math.abs(relativeBearing(t.bearing, heading)) <= FIELD_OF_VIEW / 2);
+    const withinRange = targets.filter((t) => t.distance <= VISIBLE_RADIUS_METERS);
+    const visible = withinRange.filter((t) => Math.abs(relativeBearing(t.bearing, heading)) <= FIELD_OF_VIEW / 2);
     setOverlayCount(visible.length);
+    setVisibleFeatureCount(new Set(visible.map((target) => target.featureIndex)).size);
 
     visible.forEach((target) => {
       const diff = relativeBearing(target.bearing, heading);
@@ -133,6 +153,8 @@ export default function ARView({ data, active, onStop, onTelemetry }: Props) {
     stopStream(streamRef.current);
     streamRef.current = null;
     setOverlayCount(0);
+    setVisibleFeatureCount(0);
+    setTotalFeatureCount(0);
   }
 
   return active ? (
@@ -145,6 +167,7 @@ export default function ARView({ data, active, onStop, onTelemetry }: Props) {
         <div className="text-xs">Accuracy: {accuracy ? `±${accuracy.toFixed(1)}m` : 'N/A'}</div>
         <div className="text-xs">Heading: {heading ? `${heading.toFixed(0)}°` : 'N/A'}</div>
         <div className="text-xs">Overlays: {overlayCount}</div>
+        <div className="text-xs">Features: {visibleFeatureCount}/{totalFeatureCount}</div>
         <div className="text-xs">Sensors: {permission}</div>
       </div>
 

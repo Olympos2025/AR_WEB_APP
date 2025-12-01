@@ -52,6 +52,10 @@ function App() {
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [heading, setHeading] = useState<number | null>(null);
   const [overlayCount, setOverlayCount] = useState(0);
+  const [visibleFeatures, setVisibleFeatures] = useState(0);
+  const [arTrackedFeatures, setArTrackedFeatures] = useState(0);
+
+  const collectionFeatureCount = collection?.features.length ?? 0;
 
   const { gpsAccuracy: arGpsAccuracy, heading: arHeading, permission: arPermission } = useARRenderer({
     data: collection,
@@ -167,6 +171,13 @@ function App() {
     () => (collection ? listFeatures(collection) : []),
     [collection]
   );
+
+  useEffect(() => {
+    if (!arEnabled) {
+      setVisibleFeatures(0);
+      setArTrackedFeatures(collectionFeatureCount);
+    }
+  }, [arEnabled, collectionFeatureCount]);
 
   async function onFile(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -346,6 +357,9 @@ function App() {
             </p>
             <p className="text-sm">Permission: {permission}</p>
             <p className="text-sm">Visible overlays: {overlayCount}</p>
+            <p className="text-xs text-slate-400">
+              Debug • Features in collection: {collectionFeatureCount} • AR visible: {visibleFeatures} / Tracking: {arTrackedFeatures}
+            </p>
           </div>
         </aside>
       </main>
@@ -354,10 +368,12 @@ function App() {
         data={collection}
         active={arEnabled}
         onStop={() => setArEnabled(false)}
-        onTelemetry={({ accuracy, heading, overlays, permission }) => {
+        onTelemetry={({ accuracy, heading, overlays, permission, visibleFeatures, totalFeatures }) => {
           setGpsAccuracy((prev) => accuracy ?? prev);
           setHeading(heading);
           setOverlayCount(overlays);
+          setVisibleFeatures(visibleFeatures);
+          setArTrackedFeatures(totalFeatures);
           setPermission(permission);
         }}
       />

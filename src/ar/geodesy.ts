@@ -9,6 +9,7 @@ export interface FeatureTarget {
   distance: number;
   bearing: number;
   kind: TargetKind;
+  featureIndex: number;
 }
 
 export interface TargetContext {
@@ -36,7 +37,7 @@ export function extractTargets({ origin, collection }: TargetContext): FeatureTa
 
     if (feature.geometry.type === 'Point') {
       const [lon, lat] = (feature.geometry as GeoJSON.Point).coordinates;
-      targets.push(buildTarget({ id: common, label, point: { lat, lon }, origin, kind: 'point' }));
+      targets.push(buildTarget({ id: common, label, point: { lat, lon }, origin, kind: 'point', featureIndex: index }));
       return;
     }
 
@@ -44,11 +45,27 @@ export function extractTargets({ origin, collection }: TargetContext): FeatureTa
       const coords = (feature.geometry as GeoJSON.LineString).coordinates;
       coords.forEach(([lon, lat], idx) =>
         targets.push(
-          buildTarget({ id: `${common}-v${idx}`, label, point: { lat, lon }, origin, kind: 'vertex' })
+          buildTarget({
+            id: `${common}-v${idx}`,
+            label,
+            point: { lat, lon },
+            origin,
+            kind: 'vertex',
+            featureIndex: index,
+          })
         )
       );
       const centroid = averageCentroid(coords);
-      targets.push(buildTarget({ id: `${common}-centroid`, label, point: centroid, origin, kind: 'centroid' }));
+      targets.push(
+        buildTarget({
+          id: `${common}-centroid`,
+          label,
+          point: centroid,
+          origin,
+          kind: 'centroid',
+          featureIndex: index,
+        })
+      );
       return;
     }
 
@@ -56,11 +73,27 @@ export function extractTargets({ origin, collection }: TargetContext): FeatureTa
       const outer = (feature.geometry as GeoJSON.Polygon).coordinates[0];
       outer.forEach(([lon, lat], idx) =>
         targets.push(
-          buildTarget({ id: `${common}-v${idx}`, label, point: { lat, lon }, origin, kind: 'vertex' })
+          buildTarget({
+            id: `${common}-v${idx}`,
+            label,
+            point: { lat, lon },
+            origin,
+            kind: 'vertex',
+            featureIndex: index,
+          })
         )
       );
       const centroid = averageCentroid(outer);
-      targets.push(buildTarget({ id: `${common}-centroid`, label, point: centroid, origin, kind: 'centroid' }));
+      targets.push(
+        buildTarget({
+          id: `${common}-centroid`,
+          label,
+          point: centroid,
+          origin,
+          kind: 'centroid',
+          featureIndex: index,
+        })
+      );
     }
   });
 
@@ -73,12 +106,14 @@ function buildTarget({
   point,
   origin,
   kind,
+  featureIndex,
 }: {
   id: string;
   label?: string;
   point: LatLon;
   origin: LatLon;
   kind: TargetKind;
+  featureIndex: number;
 }): FeatureTarget {
   const distance = haversineDistance(origin, point);
   const bearing = computeBearing(origin, point);
@@ -89,6 +124,7 @@ function buildTarget({
     distance,
     bearing,
     kind,
+    featureIndex,
   };
 }
 
