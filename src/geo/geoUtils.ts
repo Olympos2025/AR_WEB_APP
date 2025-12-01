@@ -4,6 +4,12 @@ export interface LatLon {
   alt?: number;
 }
 
+export interface LocalTangent {
+  east: number;
+  north: number;
+  up: number;
+}
+
 const R = 6371000; // meters
 
 export function haversineDistance(a: LatLon, b: LatLon): number {
@@ -27,7 +33,7 @@ export function bearing(a: LatLon, b: LatLon): number {
   return (toDeg(brng) + 360) % 360;
 }
 
-export function toENU(origin: LatLon, point: LatLon): { east: number; north: number; up: number } {
+export function toENU(origin: LatLon, point: LatLon): LocalTangent {
   const dLat = toRad(point.lat - origin.lat);
   const dLon = toRad(point.lon - origin.lon);
   const lat0 = toRad(origin.lat);
@@ -36,6 +42,19 @@ export function toENU(origin: LatLon, point: LatLon): { east: number; north: num
   const north = dLat * R;
   const up = (point.alt ?? 0) - (origin.alt ?? 0);
   return { east, north, up };
+}
+
+/**
+ * Converts geographic coordinates into a local tangent plane where the ground plane is y=0.
+ *
+ * The ground altitude should reflect the estimated ground level at the origin
+ * (e.g. origin.alt - userEyeHeight). This makes it easy to place geometry so that
+ * polygons sit on the ground even when the camera is above it.
+ */
+export function toLocalGroundFrame(origin: LatLon, point: LatLon, groundAltitude: number): LocalTangent {
+  const altitude = point.alt ?? groundAltitude;
+  const enu = toENU(origin, { ...point, alt: altitude });
+  return { ...enu, up: altitude - groundAltitude };
 }
 
 export function smoothPositions(samples: LatLon[], maxSamples = 5): LatLon | null {
