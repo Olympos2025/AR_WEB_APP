@@ -18,7 +18,7 @@ npm run dev
 Open the printed HTTPS tunnel or localhost URL in a modern browser. AR sensors require HTTPS on mobile.
 
 ### Dependency note
-- KML parsing pulls `@tmcw/togeojson@5.0.1` directly from the jsDelivr CDN at runtime so installs work even if scoped npm packages are blocked. Ensure client devices can reach `cdn.jsdelivr.net`.
+- KML parsing bundles `@tmcw/togeojson@5.0.1` from npm, so installs must include this dependency but no external CDN access is required at runtime.
 
 ### Live URL
 - After you push to GitHub and let the Pages workflow run, the app will be available at `https://<your-username>.github.io/<repository-name>/` (example: `https://example.github.io/fieldar-web-ar/`).
