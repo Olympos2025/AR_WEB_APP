@@ -1,122 +1,260 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl, { Map } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { parseKmlOrKmz, listFeatures, parseKmlString } from '../geo/kmlLoader';
-import { OverlayOptions } from '../ar/arScene';
-import { useARRenderer } from '../ar/arRenderer';
+import {
+  AccountService,
+  AccountUser,
+  SavedLayerMeta,
+  createAccountService,
+} from '../account';
+import { ARSettings, ARTelemetry, DEFAULT_AR_SETTINGS } from '../ar/arEngine';
 import ARView from '../ar/ARView';
-import { PermissionState } from '../ar/sensors';
+import { ACCEPTED_EXTENSIONS, parseFiles } from '../geo/loaders';
+import { parseKmlString } from '../geo/kmlLoader';
 import en from '../i18n/en.json';
 import el from '../i18n/el.json';
-import { LatLon } from '../geo/geoUtils';
-import LayerControls from './LayerControls';
-import CalibrationPanel from './CalibrationPanel';
-import FeatureList from './FeatureList';
-import sample from '../../examples/sample.kml?raw';
+import {
+  LayerData,
+  LayerStyle,
+  defaultStyle,
+  newLayerId,
+} from '../state/layerTypes';
 import { baseMaps, BaseMapKey } from '../map/baseMaps';
-import { applyKmlLayers, computeFeatureBounds } from '../map/kmlLayers';
+import { applyLayersToMap, computeCollectionBounds, computeLayersBounds } from '../map/geoLayers';
+import AccountPanel from './AccountPanel';
+import LayerPanel from './LayerPanel';
+import sample from '../../examples/sample.kml?raw';
 
 const translations = { en, el } as const;
 type Lang = keyof typeof translations;
-
-const defaultOptions: OverlayOptions = {
-  polygonFill: '#22d3ee',
-  polygonOpacity: 0.25,
-  polygonStroke: '#22d3ee',
-  polygonWidth: 4,
-  lineColor: '#22c55e',
-  lineWidth: 3,
-  pointColor: '#eab308',
-  showLabels: true,
-  heightOffset: 0,
-  simplifyTolerance: 1,
-  transparency: 0,
-};
 
 const secure = typeof window !== 'undefined' ? window.isSecureContext : false;
 
 function App() {
   const [lang, setLang] = useState<Lang>('el');
-  const t = useMemo(() => translations[lang], [lang]);
-  const [collection, setCollection] = useState<GeoJSON.FeatureCollection | null>(null);
-  const [origin, setOrigin] = useState<LatLon | null>(null);
-  const [options, setOptions] = useState<OverlayOptions>(defaultOptions);
+  const t = useMemo(() => translations[lang] as Record<string, string>, [lang]);
+
+  const [layers, setLayers] = useState<LayerData[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [arEnabled, setArEnabled] = useState(false);
-  const [permissionError, setPermissionError] = useState<string | null>(null);
-  const [permission, setPermission] = useState<PermissionState>('idle');
+  const [arSettings, setArSettings] = useState<ARSettings>(DEFAULT_AR_SETTINGS);
+  const [telemetry, setTelemetry] = useState<ARTelemetry | null>(null);
   const [basemap, setBasemap] = useState<BaseMapKey>('standard');
+
+  const [account, setAccount] = useState<AccountService | null>(null);
+  const [user, setUser] = useState<AccountUser | null>(null);
+  const [savedLayers, setSavedLayers] = useState<SavedLayerMeta[]>([]);
+  const [accountBusy, setAccountBusy] = useState(false);
+  const [accountError, setAccountError] = useState<string | null>(null);
+
   const mapRef = useRef<Map | null>(null);
   const mapContainer = useRef<HTMLDivElement | null>(null);
-  const [featureBounds, setFeatureBounds] = useState<maplibregl.LngLatBounds | null>(null);
-  const arContainer = useRef<HTMLDivElement | null>(null);
-  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
-  const [heading, setHeading] = useState<number | null>(null);
-  const [overlayCount, setOverlayCount] = useState(0);
-  const [visibleFeatures, setVisibleFeatures] = useState(0);
-  const [arTrackedFeatures, setArTrackedFeatures] = useState(0);
+  const layersRef = useRef(layers);
+  layersRef.current = layers;
 
-  const collectionFeatureCount = collection?.features.length ?? 0;
-
-  const { gpsAccuracy: arGpsAccuracy, heading: arHeading, permission: arPermission } = useARRenderer({
-    data: collection,
-    origin,
-    options,
-    active: arEnabled,
-    mount: arContainer.current ?? undefined,
-  });
-
+  // ---- Account bootstrap -------------------------------------------------
   useEffect(() => {
-    if (arGpsAccuracy !== null) {
-      setGpsAccuracy(arGpsAccuracy);
-    }
-  }, [arGpsAccuracy]);
-
-  useEffect(() => {
-    if (arHeading !== null) {
-      setHeading(arHeading);
-    }
-  }, [arHeading]);
-
-  useEffect(() => {
-    setPermission(arPermission as PermissionState);
-  }, [arPermission]);
-
-  useEffect(() => {
-    if (!navigator.geolocation) return;
-
-    const id = navigator.geolocation.watchPosition(
-      (pos) => {
-        setGpsAccuracy(pos.coords.accuracy ?? null);
-        setOrigin({
-          lat: pos.coords.latitude,
-          lon: pos.coords.longitude,
-          alt: pos.coords.altitude ?? 0,
-        });
-
-        if (mapRef.current) {
-          mapRef.current.setCenter([pos.coords.longitude, pos.coords.latitude]);
-        }
-      },
-      (err) => {
-        // Μην μπλοκάρεις το AR αν αποτύχει το GPS· απλώς γράψε στο console.
-        console.warn('Geolocation watchPosition error', err);
-        // setPermissionError(true);
-      },
-      { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 }
-    );
-
-    return () => navigator.geolocation.clearWatch(id);
+    let cancelled = false;
+    (async () => {
+      const service = await createAccountService();
+      if (cancelled) return;
+      setAccount(service);
+      const existing = await service.currentUser();
+      if (cancelled) return;
+      setUser(existing);
+      if (existing) {
+        service.listLayers().then((list) => !cancelled && setSavedLayers(list)).catch(() => undefined);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
+  const refreshSavedLayers = useCallback(
+    async (service: AccountService | null = account) => {
+      if (!service) return;
+      try {
+        setSavedLayers(await service.listLayers());
+      } catch {
+        setSavedLayers([]);
+      }
+    },
+    [account]
+  );
+
+  const accountErrorText = useCallback(
+    (code: string) => t[`accountError_${code}`] ?? t.accountError_GENERIC,
+    [t]
+  );
+
+  async function handleAuth(action: 'login' | 'register', email: string, password: string) {
+    if (!account) return;
+    setAccountBusy(true);
+    setAccountError(null);
+    try {
+      const authed = action === 'login'
+        ? await account.login(email, password)
+        : await account.register(email, password);
+      setUser(authed);
+      await refreshSavedLayers();
+    } catch (error) {
+      setAccountError(accountErrorText((error as Error).message));
+    } finally {
+      setAccountBusy(false);
+    }
+  }
+
+  async function handleLogout() {
+    if (!account) return;
+    await account.logout();
+    setUser(null);
+    setSavedLayers([]);
+  }
+
+  async function handleLoadSaved(id: string) {
+    if (!account) return;
+    setAccountBusy(true);
+    try {
+      const record = await account.loadLayer(id);
+      addLayers([
+        {
+          id: newLayerId(),
+          name: record.name,
+          sourceFormat: record.sourceFormat,
+          geojson: record.geojson,
+          style: { ...defaultStyle(layersRef.current.length), ...record.style },
+          visible: true,
+          remoteId: record.id,
+        },
+      ]);
+    } catch (error) {
+      setAccountError(accountErrorText((error as Error).message));
+    } finally {
+      setAccountBusy(false);
+    }
+  }
+
+  async function handleDeleteSaved(id: string) {
+    if (!account) return;
+    setAccountBusy(true);
+    try {
+      await account.deleteLayer(id);
+      await refreshSavedLayers();
+    } catch (error) {
+      setAccountError(accountErrorText((error as Error).message));
+    } finally {
+      setAccountBusy(false);
+    }
+  }
+
+  // ---- Layer handling ----------------------------------------------------
+  const addLayers = useCallback((newLayers: LayerData[]) => {
+    setLayers((prev) => [...prev, ...newLayers]);
+  }, []);
+
+  async function onFiles(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = '';
+    if (!files.length) return;
+    setLoadError(null);
+    try {
+      const parsed = await parseFiles(files);
+      const created: LayerData[] = parsed.map((p, i) => ({
+        id: newLayerId(),
+        name: p.name,
+        sourceFormat: p.sourceFormat,
+        geojson: p.geojson,
+        style: defaultStyle(layersRef.current.length + i),
+        visible: true,
+      }));
+      addLayers(created);
+
+      // Signed-in users get every upload stored in their account automatically.
+      if (account && user) {
+        for (const layer of created) {
+          try {
+            const meta = await account.saveLayer({
+              name: layer.name,
+              sourceFormat: layer.sourceFormat,
+              style: layer.style,
+              geojson: layer.geojson,
+            });
+            setLayers((prev) =>
+              prev.map((l) => (l.id === layer.id ? { ...l, remoteId: meta.id } : l))
+            );
+          } catch {
+            // Saving is best-effort; the layer still works locally.
+          }
+        }
+        await refreshSavedLayers();
+      }
+    } catch (error) {
+      const code = (error as Error).message ?? '';
+      if (code.startsWith('UNSUPPORTED_FORMAT')) {
+        setLoadError(`${t.errUnsupportedFormat} (${code.split(':')[1] ?? ''})`);
+      } else if (code === 'UNKNOWN_CRS') {
+        setLoadError(t.errUnknownCrs);
+      } else if (code === 'SHAPEFILE_MISSING_SHP') {
+        setLoadError(t.errShapefileMissing);
+      } else {
+        setLoadError(t.errParseFailed);
+      }
+    }
+  }
+
+  async function loadSample() {
+    const geojson = await parseKmlString(sample);
+    addLayers([
+      {
+        id: newLayerId(),
+        name: 'sample.kml',
+        sourceFormat: 'kml',
+        geojson,
+        style: defaultStyle(layersRef.current.length),
+        visible: true,
+      },
+    ]);
+  }
+
+  const updateLayer = useCallback((id: string, patch: Partial<LayerData>) => {
+    setLayers((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+  }, []);
+
+  const updateLayerStyle = useCallback((id: string, patch: Partial<LayerStyle>) => {
+    setLayers((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, style: { ...l.style, ...patch } } : l))
+    );
+  }, []);
+
+  const removeLayer = useCallback((id: string) => {
+    setLayers((prev) => prev.filter((l) => l.id !== id));
+  }, []);
+
+  const zoomToLayer = useCallback((id: string) => {
+    const layer = layersRef.current.find((l) => l.id === id);
+    if (!layer || !mapRef.current) return;
+    const bounds = computeCollectionBounds(layer.geojson);
+    if (bounds) mapRef.current.fitBounds(bounds, { padding: 40, maxZoom: 18 });
+  }, []);
+
+  // ---- Map ---------------------------------------------------------------
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
-
     mapRef.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: baseMaps[basemap].style,
+      style: baseMaps.standard.style,
       center: [23.7162, 37.9792],
-      zoom: 12,
+      zoom: 11,
     });
+    mapRef.current.addControl(new maplibregl.NavigationControl(), 'top-right');
+    mapRef.current.addControl(
+      new maplibregl.GeolocateControl({
+        positionOptions: { enableHighAccuracy: true },
+        trackUserLocation: true,
+      }),
+      'top-right'
+    );
   }, []);
 
   useEffect(() => {
@@ -125,97 +263,38 @@ function App() {
   }, [basemap]);
 
   useEffect(() => {
-    if (!collection) {
-      setFeatureBounds(null);
-      return;
-    }
-
-    const bounds = computeFeatureBounds(collection);
-    setFeatureBounds(bounds);
-  }, [collection]);
-
-  useEffect(() => {
-    if (!mapRef.current || !collection) return;
-
-    const map = mapRef.current;
-
-    if (map.isStyleLoaded()) {
-      applyKmlLayers(map, collection, options);
-      if (featureBounds) {
-        map.fitBounds(featureBounds, { padding: 32 });
-      }
-    }
-  }, [collection, options, featureBounds]);
-
-  useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
-    const handleStyleLoad = () => {
-      if (collection) {
-        applyKmlLayers(map, collection, options);
-        if (featureBounds) {
-          map.fitBounds(featureBounds, { padding: 32 });
-        }
-      }
-    };
-
-    map.on('style.load', handleStyleLoad);
-
+    const sync = () => applyLayersToMap(map, layers);
+    if (map.isStyleLoaded()) sync();
+    map.on('style.load', sync);
     return () => {
-      map.off('style.load', handleStyleLoad);
+      map.off('style.load', sync);
     };
-  }, [collection, options, featureBounds]);
+  }, [layers, basemap]);
 
-  const features = useMemo(
-    () => (collection ? listFeatures(collection) : []),
-    [collection]
-  );
-
+  const previousLayerCount = useRef(0);
   useEffect(() => {
-    if (!arEnabled) {
-      setVisibleFeatures(0);
-      setArTrackedFeatures(collectionFeatureCount);
+    // Fit once when the first layers arrive or new files are added.
+    if (layers.length > previousLayerCount.current && mapRef.current) {
+      const bounds = computeLayersBounds(layers);
+      if (bounds) mapRef.current.fitBounds(bounds, { padding: 40, maxZoom: 17 });
     }
-  }, [arEnabled, collectionFeatureCount]);
+    previousLayerCount.current = layers.length;
+  }, [layers]);
 
-  async function onFile(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const parsed = await parseKmlOrKmz(file);
-    setCollection(parsed);
-  }
-
-  async function loadSample() {
-    const geojson = await parseKmlString(sample);
-    setCollection(geojson);
-  }
-
-  useEffect(() => {
-    if (permission === 'denied') {
-      setPermissionError(t.permissionDenied);
-      setArEnabled(false);
-    } else if (permission === 'granted') {
-      setPermissionError(null);
-    }
-  }, [permission, t.permissionDenied]);
-
-  function startAR() {
-    if (!secure) {
-      setPermissionError(t.httpsWarning);
-    }
-    setArEnabled(true);
-  }
-
-  function stopAR() {
-    setArEnabled(false);
-  }
+  const totalFeatures = layers.reduce((acc, l) => acc + l.geojson.features.length, 0);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50">
       <header className="flex flex-col gap-3 px-4 py-3 border-b border-slate-800 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <img src="/AR_WEB_APP/assets/logo.svg" alt="FieldAR" className="w-10 h-10" />
+          <img
+            src={`${import.meta.env.BASE_URL}assets/logo.svg`}
+            alt="FieldAR"
+            className="w-10 h-10"
+          />
           <div>
             <h1 className="text-xl font-semibold">{t.appTitle}</h1>
             <p className="text-xs text-slate-400">{t.permissionsWarning}</p>
@@ -231,16 +310,10 @@ function App() {
             <option value="en">English</option>
           </select>
           <button
-            onClick={startAR}
+            onClick={() => setArEnabled(true)}
             className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded shadow text-sm"
           >
             {t.startAR}
-          </button>
-          <button
-            onClick={stopAR}
-            className="bg-slate-800 px-3 py-2 rounded text-sm border border-slate-700"
-          >
-            {t.stopAR}
           </button>
         </div>
       </header>
@@ -253,13 +326,14 @@ function App() {
 
       <main className="p-4 flex flex-col gap-4 lg:grid lg:grid-cols-[2fr,1fr] lg:items-start">
         <section className="space-y-4">
-          <div className="flex gap-2 flex-wrap">
-            <label className="inline-flex items-center gap-2 text-sm bg-slate-900 border border-slate-800 px-3 py-2 rounded cursor-pointer">
+          <div className="flex gap-2 flex-wrap items-center">
+            <label className="inline-flex items-center gap-2 text-sm bg-cyan-700/40 border border-cyan-700 px-3 py-2 rounded cursor-pointer hover:bg-cyan-700/60">
               <input
                 type="file"
-                accept=".kml,.kmz"
+                accept={ACCEPTED_EXTENSIONS}
+                multiple
                 className="hidden"
-                onChange={onFile}
+                onChange={onFiles}
               />
               <span>{t.loadFile}</span>
             </label>
@@ -269,113 +343,99 @@ function App() {
             >
               {t.loadSample}
             </button>
-            <button
-              onClick={() => setArEnabled(false)}
-              className="bg-slate-800 px-3 py-2 rounded text-sm border border-slate-700"
-            >
-              {t.startMap}
-            </button>
+            <span className="text-xs text-slate-500">{t.supportedFormats}</span>
           </div>
-
-          <div className="relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900 h-[60vh] min-h-[320px]">
-            <div ref={arContainer} className="absolute inset-0" />
-            {!arEnabled && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-950/80 backdrop-blur">
-                <p className="text-lg font-semibold">{t.arInactive}</p>
-                <p className="text-sm text-slate-300 text-center max-w-md">{t.arIntro}</p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={startAR}
-                    className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded shadow text-sm"
-                  >
-                    {t.startAR}
-                  </button>
-                  <button
-                    onClick={loadSample}
-                    className="bg-slate-800 px-3 py-2 rounded text-sm border border-slate-700"
-                  >
-                    {t.loadSample}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-          {permissionError && (
-            <p className="text-sm text-amber-200">{permissionError}</p>
+          {loadError && (
+            <p className="text-sm text-rose-300 bg-rose-950/40 border border-rose-900 rounded px-3 py-2">
+              {loadError}
+            </p>
           )}
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <div className="flex items-center justify-between mb-2 gap-2">
-                <h2 className="text-lg font-semibold">Mini-map</h2>
-                <label className="text-sm text-slate-300 inline-flex items-center gap-2">
-                  <span>{t.basemap}</span>
-                  <select
-                    value={basemap}
-                    onChange={(e) => setBasemap(e.target.value as BaseMapKey)}
-                    className="bg-slate-900 border border-slate-800 rounded px-2 py-1"
-                  >
-                    {Object.entries(baseMaps).map(([key, map]) => (
-                      <option key={key} value={key}>
-                        {map.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <div
-                ref={mapContainer}
-                className="h-64 rounded border border-slate-800 overflow-hidden"
-              />
+          <div>
+            <div className="flex items-center justify-between mb-2 gap-2">
+              <h2 className="text-lg font-semibold">{t.mapTitle}</h2>
+              <label className="text-sm text-slate-300 inline-flex items-center gap-2">
+                <span>{t.basemap}</span>
+                <select
+                  value={basemap}
+                  onChange={(e) => setBasemap(e.target.value as BaseMapKey)}
+                  className="bg-slate-900 border border-slate-800 rounded px-2 py-1"
+                >
+                  {Object.entries(baseMaps).map(([key, map]) => (
+                    <option key={key} value={key}>
+                      {map.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
-            <LayerControls options={options} onChange={setOptions} t={t} />
+            <div
+              ref={mapContainer}
+              className="h-[45vh] min-h-[280px] rounded-xl border border-slate-800 overflow-hidden"
+            />
           </div>
 
-          <CalibrationPanel
-            options={options}
-            onChange={setOptions}
-            heading={heading}
-            accuracy={gpsAccuracy}
+          <LayerPanel
+            layers={layers}
+            onChange={updateLayer}
+            onStyleChange={updateLayerStyle}
+            onRemove={removeLayer}
+            onZoom={zoomToLayer}
             t={t}
           />
-
-          <FeatureList features={features} title={t.featureList} />
 
           <p className="text-xs text-slate-500">{t.accuracyDisclaimer}</p>
         </section>
 
         <aside className="space-y-3 lg:sticky lg:top-4 lg:self-start">
+          <AccountPanel
+            mode={account?.mode ?? null}
+            user={user}
+            savedLayers={savedLayers}
+            busy={accountBusy}
+            error={accountError}
+            onLogin={(email, password) => handleAuth('login', email, password)}
+            onRegister={(email, password) => handleAuth('register', email, password)}
+            onLogout={handleLogout}
+            onLoadLayer={handleLoadSaved}
+            onDeleteLayer={handleDeleteSaved}
+            t={t}
+          />
+
           <div className="bg-slate-900 border border-slate-800 p-3 rounded space-y-1">
-            <h3 className="font-semibold mb-1">AR Status</h3>
+            <h3 className="font-semibold mb-1">{t.arStatus}</h3>
             <p className="text-sm">{arEnabled ? t.arActive : t.arInactive}</p>
             <p className="text-sm">
-              {t.accuracy}:{' '}
-              {gpsAccuracy ? `±${gpsAccuracy.toFixed(1)}m` : 'N/A'}
+              {t.accuracy}: {telemetry?.accuracy ? `±${telemetry.accuracy.toFixed(1)}m` : 'N/A'}
             </p>
             <p className="text-sm">
-              Heading: {heading ? `${heading.toFixed(0)}°` : 'N/A'}
+              {t.heading}:{' '}
+              {telemetry?.heading !== null && telemetry?.heading !== undefined
+                ? `${telemetry.heading.toFixed(0)}°`
+                : 'N/A'}
             </p>
-            <p className="text-sm">Permission: {permission}</p>
-            <p className="text-sm">Visible overlays: {overlayCount}</p>
-            <p className="text-xs text-slate-400">
-              Debug • Features in collection: {collectionFeatureCount} • AR visible: {visibleFeatures} / Tracking: {arTrackedFeatures}
+            <p className="text-sm">
+              {t.featureList}: {totalFeatures}
             </p>
           </div>
+
+          <button
+            onClick={() => setArEnabled(true)}
+            className="w-full bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-3 rounded-lg shadow text-sm font-medium"
+          >
+            {t.startAR}
+          </button>
         </aside>
       </main>
 
       <ARView
-        data={collection}
+        layers={layers}
         active={arEnabled}
+        settings={arSettings}
+        onSettingsChange={setArSettings}
         onStop={() => setArEnabled(false)}
-        onTelemetry={({ accuracy, heading, overlays, permission, visibleFeatures, totalFeatures }) => {
-          setGpsAccuracy((prev) => accuracy ?? prev);
-          setHeading(heading);
-          setOverlayCount(overlays);
-          setVisibleFeatures(visibleFeatures);
-          setArTrackedFeatures(totalFeatures);
-          setPermission(permission);
-        }}
+        onTelemetry={setTelemetry}
+        t={t}
       />
     </div>
   );

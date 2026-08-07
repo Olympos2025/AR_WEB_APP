@@ -24,8 +24,10 @@ export function requestDeviceOrientationPermission(): Promise<PermissionState> {
 }
 
 export function deriveHeading(event: DeviceOrientationEvent): number | null {
-  if (typeof event.webkitCompassHeading === 'number') {
-    return event.webkitCompassHeading;
+  const compass = (event as DeviceOrientationEvent & { webkitCompassHeading?: number })
+    .webkitCompassHeading;
+  if (typeof compass === 'number') {
+    return compass;
   }
 
   if (event.absolute && typeof event.alpha === 'number') {
