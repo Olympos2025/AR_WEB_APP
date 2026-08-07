@@ -1,71 +1,95 @@
 # FieldAR
 
-Mobile-first web app for visualizing KML/KMZ geospatial data in location-based AR using A-Frame + AR.js. Built with Vite + TypeScript, TailwindCSS, and MapLibre GL for a 2D fallback map.
+Mobile-first web AR για γεωχωρικά δεδομένα: φόρτωσε **KML, KMZ, GeoJSON, GPX ή Shapefile** και δες σημεία, γραμμές και πολύγωνα — με όλη τη γεωμετρία τους (κορυφές/nodes) — μέσα από την κάμερα του κινητού, τοποθετημένα στις πραγματικές τους συντεταγμένες. Τρέχει σε browser (iOS Safari, Android Chrome, tablets) χωρίς εγκατάσταση εφαρμογής.
 
-## Features
-- Load KML or KMZ files locally (no uploads) and render in AR.
-- Location-based overlays with manual styling controls, transparency, and simplification.
-- GPS accuracy and heading indicators with alignment controls and height offset.
-- 2D MapLibre fallback when permissions are denied.
-- Multi-language UI (Greek default, English available).
-- Example dataset in `examples/sample.kml` for quick testing.
+## Δυνατότητες
 
-## Getting Started
-```
-npm install
-npm run dev
-```
-Open the printed HTTPS tunnel or localhost URL in a modern browser. AR sensors require HTTPS on mobile.
+- **Φόρτωση αρχείων πολλών μορφών**: KML, KMZ, GeoJSON/JSON, GPX, Shapefile (`.zip` ή επιλογή `.shp+.dbf+.prj` μαζί).
+  - Αναπροβολή συντεταγμένων μέσω proj4: shapefile με `.prj`, GeoJSON με δηλωμένο CRS, και **αυτόματη αναγνώριση ΕΓΣΑ87 (EPSG:2100)** για ελληνικά δεδομένα.
+- **Πραγματικό 3D AR** (Three.js): η κάμερα του κινητού + GPS + αισθητήρες προσανατολισμού προβάλλουν κάθε κορυφή της γεωμετρίας σε σωστή προοπτική. Πολύγωνα με γέμισμα/περίγραμμα/τρύπες, γραμμές με όλα τα nodes, σημεία με pin και markers κορυφών.
+- **Λογαριασμοί χρηστών**: εγγραφή/σύνδεση· κάθε αρχείο που φορτώνεις αποθηκεύεται στον λογαριασμό σου και ξαναφορτώνεται από τη λίστα «Αποθηκευμένα αρχεία».
+  - Με τον included Node server: πραγματικοί λογαριασμοί (JWT) κοινοί σε όλες τις συσκευές.
+  - Σε στατικό hosting (π.χ. GitHub Pages): αυτόματο fallback σε τοπικό λογαριασμό συσκευής (IndexedDB).
+- **Πίνακας layers**: ορατότητα, χρώματα γεμίσματος/περιγράμματος/γραμμών/σημείων, αδιαφάνεια ανά layer, πάχη, μέγεθος σημείων, **ετικέτες on/off με επιλογή πεδίου (στήλης)**, χρώμα/μέγεθος ετικέτας, εστίαση στον χάρτη.
+- **Υπόβαθρα μέσα στο AR (πιλοτικό)**: street map (OSM), τοπογραφικό (OpenTopoMap) ή δορυφορικό (Esri) «στρωμένο» στο έδαφος γύρω από τον χρήστη, με ρύθμιση διαφάνειας.
+- **2D χάρτης** (MapLibre) με τα ίδια layers/συμβολισμούς και επιλογή υποβάθρου, για έλεγχο πριν βγεις στο πεδίο.
+- **Βαθμονόμηση AR**: διόρθωση πυξίδας ±180°, υψομετρική μετατόπιση, οπτικό πεδίο κάμερας, χρήση/παράβλεψη υψομέτρων αρχείου.
+- Ελληνικό UI (προεπιλογή) + Αγγλικά.
 
-### Dependency note
-- KML parsing bundles `@tmcw/togeojson@5.0.1` from npm, so installs must include this dependency but no external CDN access is required at runtime.
+## Γρήγορη εκκίνηση
 
-### Live URL
-- After you push to GitHub and let the Pages workflow run, the app will be available at `https://<your-username>.github.io/<repository-name>/` (example: `https://example.github.io/fieldar-web-ar/`).
-
-#### Quick deploy commands
 ```bash
-git remote add origin https://github.com/<your-username>/<repository-name>.git
-git branch -M main
-git push -u origin main
-# then enable GitHub Pages → Source: GitHub Actions (if not already enabled)
+npm install
+npm run dev          # μόνο frontend (τοπικοί λογαριασμοί συσκευής)
 ```
 
-### Building
-```
-npm run build
-```
-The static assets are emitted to `dist/` and can be served as-is from any HTTPS host.
+Με πλήρεις λογαριασμούς server:
 
-### Testing
+```bash
+npm run start        # build + Node server στο http://localhost:8080
+# ή ξεχωριστά: npm run build && npm run server
 ```
-npm test
+
+Άνοιξε τη διεύθυνση σε κινητό μέσω **HTTPS** (βλ. παρακάτω) — οι αισθητήρες απαιτούν secure context.
+
+## Χρήση στο πεδίο
+
+1. Φόρτωσε τα αρχεία σου (κουμπί «Φόρτωση γεωχωρικών αρχείων» — για shapefile επίλεξε το `.zip` ή μαζί τα `.shp`, `.dbf`, `.prj`).
+2. Έλεγξε τη θέση τους στον 2D χάρτη και ρύθμισε συμβολισμό/ετικέτες από τον πίνακα layers.
+3. Πάτα «Έναρξη AR» και δώσε άδειες για κάμερα, τοποθεσία και αισθητήρες κίνησης.
+4. Από τις «Ρυθμίσεις» μέσα στο AR: βαθμονόμησε την πυξίδα ώστε γνωστά σημεία να «κάθονται» σωστά, και ενεργοποίησε προαιρετικά υπόβαθρο AR.
+
+> Ακρίβεια: εξαρτάται από το GPS του κινητού (τυπικά ±3–10 m) και την πυξίδα. Το slider βαθμονόμησης πυξίδας διορθώνει τη συστηματική απόκλιση επί τόπου.
+
+---
+
+# English
+
+Browser-based location AR for geospatial files. Load **KML, KMZ, GeoJSON, GPX or Shapefile** and see every point, line and polygon — full geometry, all vertices — through the phone camera at its true coordinates. Works on iOS Safari and Android Chrome, phones and tablets, no app install.
+
+## Architecture
+
+- `src/geo/` – format loaders (KML/KMZ, GeoJSON, GPX, shapefile via shpjs), proj4 reprojection (EPSG:2100 heuristic for Greek data), geometry utils.
+- `src/ar/` – Three.js AR engine: device-orientation quaternion camera, ENU world frame anchored at first GPS fix, per-vertex geometry building, screen-space label sprites, tiled basemap ground plane (pilot).
+- `src/state/` – layer model (style, labels, visibility).
+- `src/map/` – MapLibre 2D map with per-layer styling and label layers.
+- `src/account/` – account abstraction: REST client (JWT) when the API responds, IndexedDB device-local fallback otherwise.
+- `server/` – Express API (register/login, per-user layer storage as JSON on disk) that also serves the built frontend.
+
+## Accounts & deployment modes
+
+| Hosting | Accounts |
+|---|---|
+| `npm run start` (Node server, e.g. Render/Railway/Fly/VPS) | Real accounts, layers stored server-side, shared across devices |
+| Static `dist/` (GitHub Pages, Netlify, Vercel) | Automatic fallback to device-local accounts (IndexedDB) |
+
+To point a static frontend at a separately hosted API, set `VITE_API_URL` at build time:
+
+```bash
+VITE_API_URL=https://your-api.example.com npm run build
 ```
-Runs unit tests for geometry helpers and simplification.
+
+Server environment variables: `PORT` (default 8080), `JWT_SECRET` (auto-generated and persisted if unset), `FIELDAR_DATA_DIR` (default `server/data`).
+
+## Building & testing
+
+```bash
+npm run build   # static assets in dist/
+npm test        # vitest: geometry utils, loaders (EPSG:2100 reprojection), simplification
+```
 
 ## Deployment
+
 ### GitHub Pages
-1. Push this repository to GitHub (e.g., `fieldar-web-ar`) and enable Pages → **Source: GitHub Actions**.
-2. The included workflow `.github/workflows/deploy.yml` will build and publish `dist/` automatically on each push to `main`.
-3. After the first successful run, your live URL will be `https://<your-username>.github.io/<repository-name>/` (for example `https://example.github.io/fieldar-web-ar/`).
+Push to `main`; the workflow `.github/workflows/deploy.yml` builds and publishes `dist/` (accounts run in device-local mode).
 
-### Netlify
-```
-netlify init
-netlify deploy --prod --dir=dist
-```
+### Node server
+Deploy the repo to any Node 20+ host and run `npm run start`. The same process serves the app and the API over one origin.
 
-### Vercel
-```
-vercel
-```
+## HTTPS requirement
 
-## HTTPS Requirement
-Camera, geolocation, and orientation APIs only work on secure origins. Host the built `dist/` directory on HTTPS and open the public URL on your device (iOS Safari 15+ or Android Chrome).
+Camera, geolocation and orientation sensors only work on secure origins. Use the deployed HTTPS URL on the device (or `localhost` during development). For quick phone testing against a dev machine, tunnel with e.g. `ngrok http 5173`.
 
-## Project Structure
-- `src/ui/` – React UI components.
-- `src/ar/` – AR scene helpers and renderer hook.
-- `src/geo/` – Geometry helpers, simplification, and KML/KMZ loader.
-- `src/i18n/` – Translation JSON files.
-- `examples/` – Sample KML for quick load.
+## Basemap attribution
+
+© OpenStreetMap contributors · © OpenTopoMap (CC-BY-SA) · © Esri & contributors · Dark Matter © CartoDB

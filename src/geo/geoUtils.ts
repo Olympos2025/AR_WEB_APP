@@ -60,7 +60,7 @@ export function toLocalGroundFrame(origin: LatLon, point: LatLon, groundAltitude
 export function smoothPositions(samples: LatLon[], maxSamples = 5): LatLon | null {
   const trimmed = samples.slice(-maxSamples);
   if (!trimmed.length) return null;
-  const sum = trimmed.reduce(
+  const sum = trimmed.reduce<{ lat: number; lon: number; alt: number }>(
     (acc, p) => {
       acc.lat += p.lat;
       acc.lon += p.lon;

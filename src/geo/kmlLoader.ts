@@ -69,8 +69,7 @@ function parsePlacemark(placemark: Element, index: number): GeoJSON.Feature | nu
   if (!coordinates.length) return null;
 
   if (placemark.getElementsByTagName('Point').length) {
-    const [lon, lat, alt] = coordinates[0];
-    return buildFeature({ name, geometry: { type: 'Point', coordinates: [lon, lat, alt] } });
+    return buildFeature({ name, geometry: { type: 'Point', coordinates: coordinates[0] } });
   }
 
   if (placemark.getElementsByTagName('LineString').length) {
@@ -84,11 +83,11 @@ function parsePlacemark(placemark: Element, index: number): GeoJSON.Feature | nu
   return null;
 }
 
-function parseCoordinates(input: string): [number, number, number?][] {
+function parseCoordinates(input: string): number[][] {
   return input
     .trim()
     .split(/\s+/)
-    .map((row) => row.split(',').map((value) => Number(value.trim())) as [number, number, number?])
+    .map((row) => row.split(',').map((value) => Number(value.trim())))
     .filter((coords) => coords.length >= 2 && coords.every((value) => !Number.isNaN(value)));
 }
 

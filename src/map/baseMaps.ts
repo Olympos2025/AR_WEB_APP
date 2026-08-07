@@ -1,74 +1,72 @@
 import type { StyleSpecification } from 'maplibre-gl';
 
+// Glyphs are required for symbol (label) layers on top of these raster styles.
+const GLYPHS_URL = 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf';
+
+function rasterStyle(id: string, tiles: string[], attribution: string): StyleSpecification {
+  return {
+    version: 8,
+    glyphs: GLYPHS_URL,
+    sources: {
+      [id]: {
+        type: 'raster',
+        tiles,
+        tileSize: 256,
+        attribution,
+      },
+    },
+    layers: [
+      {
+        id,
+        type: 'raster',
+        source: id,
+      },
+    ],
+  };
+}
+
 export const baseMaps = {
   standard: {
     label: 'OSM Standard',
-    style: {
-      version: 8,
-      sources: {
-        osm: {
-          type: 'raster',
-          tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-          tileSize: 256,
-          attribution: '© OpenStreetMap contributors',
-        },
-      },
-      layers: [
-        {
-          id: 'osm',
-          type: 'raster',
-          source: 'osm',
-        },
+    style: rasterStyle(
+      'osm',
+      ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      '© OpenStreetMap contributors'
+    ),
+  },
+  topo: {
+    label: 'OpenTopoMap',
+    style: rasterStyle(
+      'topo',
+      [
+        'https://a.tile.opentopomap.org/{z}/{x}/{y}.png',
+        'https://b.tile.opentopomap.org/{z}/{x}/{y}.png',
+        'https://c.tile.opentopomap.org/{z}/{x}/{y}.png',
       ],
-    } satisfies StyleSpecification,
+      '© OpenStreetMap, SRTM | © OpenTopoMap (CC-BY-SA)'
+    ),
   },
   dark: {
     label: 'Dark Matter',
-    style: {
-      version: 8,
-      sources: {
-        dark: {
-          type: 'raster',
-          tiles: [
-            'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-            'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-            'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-          ],
-          tileSize: 256,
-          attribution: '© OpenStreetMap, © CartoDB',
-        },
-      },
-      layers: [
-        {
-          id: 'dark',
-          type: 'raster',
-          source: 'dark',
-        },
+    style: rasterStyle(
+      'dark',
+      [
+        'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+        'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+        'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
       ],
-    } satisfies StyleSpecification,
+      '© OpenStreetMap, © CartoDB'
+    ),
   },
   imagery: {
     label: 'Imagery',
-    style: {
-      version: 8,
-      sources: {
-        imagery: {
-          type: 'raster',
-          tiles: [
-            'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-          ],
-          tileSize: 256,
-          attribution: '© Esri & contributors',
-        },
-      },
-      layers: [
-        {
-          id: 'imagery',
-          type: 'raster',
-          source: 'imagery',
-        },
+    style: rasterStyle(
+      'imagery',
+      [
+        'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
       ],
-    } satisfies StyleSpecification,
+      '© Esri & contributors'
+    ),
   },
 } as const;
 
