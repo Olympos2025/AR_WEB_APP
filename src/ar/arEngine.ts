@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
-import { LatLon, smoothPositions, toENU } from '../geo/geoUtils';
+import { GpsFilter } from '../geo/gpsFilter';
+import { LatLon, toENU } from '../geo/geoUtils';
 import { LayerData } from '../state/layerTypes';
 import { BasemapGround, BasemapKey } from './basemapGround';
 import { buildLayers, disposeGroup } from './geometryBuilder';
@@ -33,9 +34,10 @@ export const DEFAULT_AR_SETTINGS: ARSettings = {
 };
 
 export interface ARTelemetry {
-  accuracy: number | null;
+  accuracy: number | null; // raw accuracy of the latest GPS fix
+  estimatedAccuracy: number | null; // filtered estimate; improves over time
   heading: number | null;
-  position: LatLon | null; // smoothed current GPS position
+  position: LatLon | null; // filtered current position
   originSet: boolean;
   trackedFeatures: number;
   cameraState: 'pending' | 'ok' | 'error';
@@ -63,7 +65,8 @@ export class AREngine {
   private settings: ARSettings = { ...DEFAULT_AR_SETTINGS };
 
   private origin: LatLon | null = null;
-  private positionSamples: LatLon[] = [];
+  private gpsFilter = new GpsFilter();
+  private estimatedAccuracy: number | null = null;
   private targetCameraPosition = new THREE.Vector3(0, EYE_HEIGHT, 0);
   private targetQuaternion = new THREE.Quaternion();
   private hasOrientation = false;
@@ -130,7 +133,7 @@ export class AREngine {
       this.geoWatchId = navigator.geolocation.watchPosition(
         (pos) => this.handlePosition(pos),
         () => undefined,
-        { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
       );
     }
 
@@ -188,36 +191,38 @@ export class AREngine {
   }
 
   private currentPosition(): LatLon | null {
-    return smoothPositions(this.positionSamples);
+    return this.gpsFilter.current;
   }
 
   private handlePosition(pos: GeolocationPosition) {
     this.accuracy = pos.coords.accuracy ?? null;
-    const reading: LatLon = {
+    // Accuracy-weighted filtering: the position estimate converges on its own
+    // as GPS quality improves, so the overlay self-corrects over time.
+    const filtered = this.gpsFilter.update({
       lat: pos.coords.latitude,
       lon: pos.coords.longitude,
       alt: pos.coords.altitude ?? 0,
-    };
-    this.positionSamples.push(reading);
-    if (this.positionSamples.length > 12) this.positionSamples.shift();
+      accuracy: pos.coords.accuracy ?? 30,
+      timestamp: pos.timestamp ?? Date.now(),
+    });
+    this.estimatedAccuracy = filtered.estimatedAccuracy;
 
     if (!this.origin) {
       // Anchor the world at the first fix; all geometry is built relative to it.
-      this.origin = reading;
-      this.basemap.setOrigin(reading);
+      // The anchor only defines the local frame — camera placement always uses
+      // the latest filtered fix, so an imprecise first fix costs nothing.
+      this.origin = filtered;
+      this.basemap.setOrigin(filtered);
       this.rebuildContent();
     }
 
-    const smoothed = this.currentPosition();
-    if (smoothed && this.origin) {
-      const enu = toENU(this.origin, smoothed);
-      this.targetCameraPosition.set(
-        enu.east,
-        EYE_HEIGHT + this.settings.heightOffset,
-        -enu.north
-      );
-      this.basemap.update(smoothed);
-    }
+    const enu = toENU(this.origin, filtered);
+    this.targetCameraPosition.set(
+      enu.east,
+      EYE_HEIGHT + this.settings.heightOffset,
+      -enu.north
+    );
+    this.basemap.update(filtered);
   }
 
   private rebuildContent() {
@@ -279,6 +284,7 @@ export class AREngine {
     if (!this.onTelemetry) return;
     this.onTelemetry({
       accuracy: this.accuracy,
+      estimatedAccuracy: this.estimatedAccuracy,
       heading: this.hasOrientation ? headingFromQuaternion(this.camera.quaternion) : null,
       position: this.currentPosition(),
       originSet: this.origin !== null,

@@ -54,6 +54,8 @@
   "orientationHint": "Move your device to activate the orientation sensors.",
   "showControls": "Settings",
   "hideControls": "Hide",
+  "estimate": "estimate",
+  "gpsAutoHint": "The position self-corrects from GPS — stay relatively still for a few seconds for a better fit.",
   "dataCorrection": "Data position correction",
   "dataCorrectionHint": "Modifies the real coordinates of the data (also visible on the map and saved to your account). Stand on a known point/vertex and tap “Snap to my position”, or fine-tune with the arrows.",
   "correctionTarget": "What will move",
