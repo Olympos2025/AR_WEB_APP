@@ -178,6 +178,23 @@ export class LocalAccountService implements AccountService {
     return { id, name, sourceFormat, createdAt, featureCount };
   }
 
+  async updateLayer(id: string, input: SaveLayerInput): Promise<void> {
+    const user = this.requireUser();
+    const record = await withStore('layers', false, (store) =>
+      requestToPromise(store.get(id) as IDBRequest<StoredLayer | undefined>)
+    );
+    if (!record || record.userId !== user.id) throw new AccountError('NOT_FOUND');
+    const updated: StoredLayer = {
+      ...record,
+      name: input.name,
+      sourceFormat: input.sourceFormat,
+      style: input.style,
+      geojson: input.geojson,
+      featureCount: input.geojson.features.length,
+    };
+    await withStore('layers', true, (store) => requestToPromise(store.put(updated)));
+  }
+
   async loadLayer(id: string): Promise<SavedLayerRecord> {
     const user = this.requireUser();
     const record = await withStore('layers', false, (store) =>

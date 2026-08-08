@@ -35,6 +35,7 @@ export interface AccountService {
   logout(): Promise<void>;
   listLayers(): Promise<SavedLayerMeta[]>;
   saveLayer(input: SaveLayerInput): Promise<SavedLayerMeta>;
+  updateLayer(id: string, input: SaveLayerInput): Promise<void>;
   loadLayer(id: string): Promise<SavedLayerRecord>;
   deleteLayer(id: string): Promise<void>;
 }

@@ -160,6 +160,26 @@ app.post('/api/layers', auth, (req, res) => {
     .json({ layer: { id, name: layerName, sourceFormat: format, createdAt, featureCount } });
 });
 
+app.put('/api/layers/:id', auth, (req, res) => {
+  const file = layerPath(req.params.id);
+  if (!file || !fs.existsSync(file)) return res.status(404).json({ error: 'NOT_FOUND' });
+  const record = JSON.parse(fs.readFileSync(file, 'utf8'));
+  if (record.userId !== req.user.id) return res.status(404).json({ error: 'NOT_FOUND' });
+  const { name, sourceFormat, style, geojson } = req.body ?? {};
+  if (geojson && (geojson.type !== 'FeatureCollection' || !Array.isArray(geojson.features))) {
+    return res.status(400).json({ error: 'INVALID_LAYER' });
+  }
+  if (name) record.name = String(name).slice(0, 200);
+  if (sourceFormat) record.sourceFormat = String(sourceFormat).slice(0, 40);
+  if (style) record.style = style;
+  if (geojson) {
+    record.geojson = geojson;
+    record.featureCount = geojson.features.length;
+  }
+  fs.writeFileSync(file, JSON.stringify(record));
+  res.json({ ok: true });
+});
+
 app.get('/api/layers/:id', auth, (req, res) => {
   const file = layerPath(req.params.id);
   if (!file || !fs.existsSync(file)) return res.status(404).json({ error: 'NOT_FOUND' });
