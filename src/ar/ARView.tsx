@@ -127,9 +127,24 @@ export default function ARView({
 
       <div className="absolute top-3 left-3 bg-slate-900/80 text-white px-3 py-2 rounded-lg shadow max-w-[46vw]">
         <div className="text-xs font-semibold mb-1">{t.arStatus}</div>
-        <div className="text-xs">
+        <div
+          className={`text-xs ${
+            telemetry?.estimatedAccuracy == null
+              ? ''
+              : telemetry.estimatedAccuracy <= 4
+                ? 'text-emerald-300'
+                : telemetry.estimatedAccuracy <= 10
+                  ? 'text-amber-300'
+                  : 'text-rose-300'
+          }`}
+        >
           GPS: {telemetry?.accuracy ? `±${telemetry.accuracy.toFixed(1)}m` : '…'}
+          {telemetry?.estimatedAccuracy != null &&
+            ` → ${t.estimate} ±${telemetry.estimatedAccuracy.toFixed(1)}m`}
         </div>
+        {telemetry?.estimatedAccuracy != null && telemetry.estimatedAccuracy > 6 && (
+          <div className="text-[11px] text-slate-300">{t.gpsAutoHint}</div>
+        )}
         <div className="text-xs">
           {t.heading}:{' '}
           {telemetry?.heading !== null && telemetry?.heading !== undefined
