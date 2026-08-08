@@ -11,6 +11,13 @@ import { ARSettings, ARTelemetry, DEFAULT_AR_SETTINGS } from '../ar/arEngine';
 import ARView from '../ar/ARView';
 import { ACCEPTED_EXTENSIONS, parseFiles } from '../geo/loaders';
 import { parseKmlString } from '../geo/kmlLoader';
+import { LatLon } from '../geo/geoUtils';
+import {
+  CorrectionTarget,
+  deltaToPosition,
+  findNearestVertex,
+  translateCollection,
+} from '../geo/transform';
 import en from '../i18n/en.json';
 import el from '../i18n/el.json';
 import {
@@ -231,6 +238,123 @@ function App() {
     setLayers((prev) => prev.filter((l) => l.id !== id));
   }, []);
 
+  // ---- Real-coordinate corrections (data shifts) -------------------------
+  interface ShiftEntry {
+    layerId: string;
+    featureIndex: number | null;
+    dEast: number;
+    dNorth: number;
+  }
+  const undoStack = useRef<ShiftEntry[][]>([]);
+
+  const persistLayer = useCallback(
+    (layer: LayerData) => {
+      if (!account || !user || !layer.remoteId) return;
+      account
+        .updateLayer(layer.remoteId, {
+          name: layer.name,
+          sourceFormat: layer.sourceFormat,
+          style: layer.style,
+          geojson: layer.geojson,
+        })
+        .catch(() => undefined);
+    },
+    [account, user]
+  );
+
+  const applyShiftEntries = useCallback(
+    (entries: ShiftEntry[], recordUndo: boolean) => {
+      if (!entries.length) return;
+      const affected = new Set(entries.map((e) => e.layerId));
+      const next = layersRef.current.map((layer) => {
+        if (!affected.has(layer.id)) return layer;
+        let geojson = layer.geojson;
+        entries
+          .filter((e) => e.layerId === layer.id)
+          .forEach((e) => {
+            geojson = translateCollection(geojson, e.dEast, e.dNorth, e.featureIndex);
+          });
+        return { ...layer, geojson };
+      });
+      setLayers(next);
+      if (recordUndo) {
+        undoStack.current.push(entries);
+        if (undoStack.current.length > 50) undoStack.current.shift();
+      }
+      next.filter((l) => affected.has(l.id)).forEach(persistLayer);
+    },
+    [persistLayer]
+  );
+
+  const resolveTargets = useCallback(
+    (target: CorrectionTarget, position: LatLon | null): ShiftEntry[] | null => {
+      const current = layersRef.current;
+      const candidates =
+        target.layerId === 'all'
+          ? current.filter((l) => l.visible)
+          : current.filter((l) => l.id === target.layerId);
+      if (!candidates.length) return null;
+      if (target.nearestFeatureOnly) {
+        if (!position) return null;
+        const hit = findNearestVertex(
+          candidates.map((l) => ({ id: l.id, collection: l.geojson })),
+          position
+        );
+        if (!hit) return null;
+        return [{ layerId: hit.layerId, featureIndex: hit.featureIndex, dEast: 0, dNorth: 0 }];
+      }
+      return candidates.map((l) => ({ layerId: l.id, featureIndex: null, dEast: 0, dNorth: 0 }));
+    },
+    []
+  );
+
+  /** Move the target's real coordinates by meters (arrows in the AR view). */
+  const shiftData = useCallback(
+    (target: CorrectionTarget, dEast: number, dNorth: number, position: LatLon | null): boolean => {
+      const targets = resolveTargets(target, position);
+      if (!targets) return false;
+      applyShiftEntries(
+        targets.map((t) => ({ ...t, dEast, dNorth })),
+        true
+      );
+      return true;
+    },
+    [applyShiftEntries, resolveTargets]
+  );
+
+  /** Snap: translate the target so its nearest vertex lands exactly on the user's position. */
+  const snapDataToPosition = useCallback(
+    (target: CorrectionTarget, position: LatLon): { moved: number } | null => {
+      const current = layersRef.current;
+      const candidates =
+        target.layerId === 'all'
+          ? current.filter((l) => l.visible)
+          : current.filter((l) => l.id === target.layerId);
+      const hit = findNearestVertex(
+        candidates.map((l) => ({ id: l.id, collection: l.geojson })),
+        position
+      );
+      if (!hit) return null;
+      const { dEast, dNorth } = deltaToPosition(hit.vertex, position);
+      const entries: ShiftEntry[] = target.nearestFeatureOnly
+        ? [{ layerId: hit.layerId, featureIndex: hit.featureIndex, dEast, dNorth }]
+        : candidates.map((l) => ({ layerId: l.id, featureIndex: null, dEast, dNorth }));
+      applyShiftEntries(entries, true);
+      return { moved: Math.hypot(dEast, dNorth) };
+    },
+    [applyShiftEntries]
+  );
+
+  const undoDataShift = useCallback((): boolean => {
+    const entries = undoStack.current.pop();
+    if (!entries) return false;
+    applyShiftEntries(
+      entries.map((e) => ({ ...e, dEast: -e.dEast, dNorth: -e.dNorth })),
+      false
+    );
+    return true;
+  }, [applyShiftEntries]);
+
   const zoomToLayer = useCallback((id: string) => {
     const layer = layersRef.current.find((l) => l.id === id);
     if (!layer || !mapRef.current) return;
@@ -435,6 +559,9 @@ function App() {
         onSettingsChange={setArSettings}
         onStop={() => setArEnabled(false)}
         onTelemetry={setTelemetry}
+        onShiftData={shiftData}
+        onSnapData={snapDataToPosition}
+        onUndoShift={undoDataShift}
         t={t}
       />
     </div>

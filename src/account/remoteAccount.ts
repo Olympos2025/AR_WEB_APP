@@ -95,6 +95,13 @@ export class RemoteAccountService implements AccountService {
     return layer;
   }
 
+  async updateLayer(id: string, input: SaveLayerInput): Promise<void> {
+    await this.request(`/api/layers/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    });
+  }
+
   async loadLayer(id: string): Promise<SavedLayerRecord> {
     const { layer } = await this.request<{ layer: SavedLayerRecord }>(
       `/api/layers/${encodeURIComponent(id)}`

@@ -35,6 +35,7 @@ export const DEFAULT_AR_SETTINGS: ARSettings = {
 export interface ARTelemetry {
   accuracy: number | null;
   heading: number | null;
+  position: LatLon | null; // smoothed current GPS position
   originSet: boolean;
   trackedFeatures: number;
   cameraState: 'pending' | 'ok' | 'error';
@@ -279,6 +280,7 @@ export class AREngine {
     this.onTelemetry({
       accuracy: this.accuracy,
       heading: this.hasOrientation ? headingFromQuaternion(this.camera.quaternion) : null,
+      position: this.currentPosition(),
       originSet: this.origin !== null,
       trackedFeatures: this.trackedFeatures,
       cameraState: this.cameraState,
