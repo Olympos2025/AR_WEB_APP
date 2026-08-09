@@ -336,6 +336,14 @@ export default function ARView({
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
+                checked={settings.drapeToTerrain}
+                onChange={(e) => update({ drapeToTerrain: e.target.checked })}
+              />
+              <span>{t.drapeToTerrain}</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
                 checked={settings.useAltitudes}
                 onChange={(e) => update({ useAltitudes: e.target.checked })}
               />

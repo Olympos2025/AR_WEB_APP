@@ -77,6 +77,7 @@
   "headingCalibration": "Compass calibration",
   "cameraFov": "Camera field of view",
   "useAltitudes": "Use file altitudes",
+  "drapeToTerrain": "Drape on terrain (3D ground)",
   "arBasemap": "AR basemap (pilot)",
   "basemapOpacity": "Basemap opacity",
   "basemap_none": "No basemap",
