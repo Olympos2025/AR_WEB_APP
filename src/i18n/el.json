@@ -77,6 +77,7 @@
   "headingCalibration": "Βαθμονόμηση πυξίδας",
   "cameraFov": "Οπτικό πεδίο κάμερας",
   "useAltitudes": "Χρήση υψομέτρων αρχείου",
+  "drapeToTerrain": "Κόλλημα στο ανάγλυφο (3D έδαφος)",
   "arBasemap": "Υπόβαθρο AR (πιλοτικό)",
   "basemapOpacity": "Διαφάνεια υποβάθρου",
   "basemap_none": "Χωρίς υπόβαθρο",

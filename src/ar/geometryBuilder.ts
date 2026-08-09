@@ -18,10 +18,22 @@ export interface BuiltLayers {
   featureCount: number;
 }
 
+export interface BuildOptions {
+  useAltitudes: boolean;
+  /**
+   * Terrain height (meters, relative to the origin's ground level) at a
+   * coordinate. Returns 0 everywhere when no DEM is available, which drapes
+   * features on the flat local ground plane.
+   */
+  groundYAt: (lon: number, lat: number) => number;
+  /** Absolute elevation the y=0 plane corresponds to (for absolute altitudes). */
+  altitudeReference: number;
+}
+
 interface BuildContext {
   origin: LatLon;
   style: LayerStyle;
-  useAltitudes: boolean;
+  options: BuildOptions;
   lineMaterials: LineMaterial[];
   group: THREE.Group;
 }
@@ -29,7 +41,7 @@ interface BuildContext {
 export function buildLayers(
   layers: LayerData[],
   origin: LatLon,
-  useAltitudes: boolean
+  options: BuildOptions
 ): BuiltLayers {
   const root = new THREE.Group();
   root.name = 'fieldar-layers';
@@ -40,7 +52,7 @@ export function buildLayers(
     if (!layer.visible) return;
     const group = new THREE.Group();
     group.name = layer.id;
-    const ctx: BuildContext = { origin, style: layer.style, useAltitudes, lineMaterials, group };
+    const ctx: BuildContext = { origin, style: layer.style, options, lineMaterials, group };
     layer.geojson.features.forEach((feature) => {
       if (!feature.geometry) return;
       buildFeature(feature, ctx);
@@ -54,10 +66,13 @@ export function buildLayers(
 
 function toWorld(ctx: BuildContext, position: number[]): THREE.Vector3 {
   const [lon, lat, alt] = position;
-  const hasAlt = ctx.useAltitudes && typeof alt === 'number' && !Number.isNaN(alt) && alt !== 0;
-  const enu = toENU(ctx.origin, { lat, lon, alt: hasAlt ? alt : ctx.origin.alt ?? 0 });
-  // Features without usable altitude are draped on the local ground plane (y=0).
-  return new THREE.Vector3(enu.east, hasAlt ? enu.up : 0, -enu.north);
+  const hasAlt =
+    ctx.options.useAltitudes && typeof alt === 'number' && !Number.isNaN(alt) && alt !== 0;
+  const enu = toENU(ctx.origin, { lat, lon, alt: ctx.origin.alt ?? 0 });
+  // With a DEM, features without their own altitude sit on the real terrain
+  // surface; otherwise they drape on the flat local ground plane (y=0).
+  const y = hasAlt ? alt - ctx.options.altitudeReference : ctx.options.groundYAt(lon, lat);
+  return new THREE.Vector3(enu.east, y, -enu.north);
 }
 
 function buildFeature(feature: GeoJSON.Feature, ctx: BuildContext) {

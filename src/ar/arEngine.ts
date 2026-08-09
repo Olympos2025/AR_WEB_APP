@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import { densifyGeometry } from '../geo/densify';
+import { ElevationService } from '../geo/elevation';
 import { GpsFilter } from '../geo/gpsFilter';
-import { LatLon, toENU } from '../geo/geoUtils';
+import { LatLon, haversineDistance, toENU } from '../geo/geoUtils';
+import { forEachPosition } from '../geo/transform';
 import { LayerData } from '../state/layerTypes';
 import { BasemapGround, BasemapKey } from './basemapGround';
 import { buildLayers, disposeGroup } from './geometryBuilder';
@@ -19,6 +22,7 @@ export interface ARSettings {
   headingOffset: number; // deg, manual compass calibration
   heightOffset: number; // m, camera height above ground
   useAltitudes: boolean; // honor per-vertex altitudes from the file
+  drapeToTerrain: boolean; // drape geometry on real terrain elevations (DEM)
   basemap: BasemapKey;
   basemapOpacity: number;
   fov: number; // vertical fov in degrees
@@ -28,6 +32,7 @@ export const DEFAULT_AR_SETTINGS: ARSettings = {
   headingOffset: 0,
   heightOffset: 0,
   useAltitudes: false,
+  drapeToTerrain: true,
   basemap: 'none',
   basemapOpacity: 0.85,
   fov: 65,
@@ -45,6 +50,10 @@ export interface ARTelemetry {
 }
 
 const EYE_HEIGHT = 1.6;
+
+function positionKey(lon: number, lat: number): string {
+  return `${lon.toFixed(7)},${lat.toFixed(7)}`;
+}
 
 export class AREngine {
   private container: HTMLElement;
@@ -67,6 +76,10 @@ export class AREngine {
   private origin: LatLon | null = null;
   private gpsFilter = new GpsFilter();
   private estimatedAccuracy: number | null = null;
+  private elevation = new ElevationService();
+  private buildToken = 0;
+  private originGroundElev: number | null = null; // absolute meters at the anchor
+  private cameraElevCache: { at: LatLon; y: number } | null = null;
   private targetCameraPosition = new THREE.Vector3(0, EYE_HEIGHT, 0);
   private targetQuaternion = new THREE.Quaternion();
   private hasOrientation = false;
@@ -172,21 +185,28 @@ export class AREngine {
 
   setLayers(layers: LayerData[]) {
     this.layers = layers;
-    this.rebuildContent();
+    void this.rebuildContent();
   }
 
   setSettings(settings: ARSettings) {
-    const needsRebuild = settings.useAltitudes !== this.settings.useAltitudes;
+    const needsRebuild =
+      settings.useAltitudes !== this.settings.useAltitudes ||
+      settings.drapeToTerrain !== this.settings.drapeToTerrain;
     const previousBasemap = this.settings.basemap;
     this.settings = { ...settings };
     this.camera.fov = settings.fov;
     this.camera.updateProjectionMatrix();
     this.basemap.setBasemap(settings.basemap);
     this.basemap.setOpacity(settings.basemapOpacity);
-    if (needsRebuild) this.rebuildContent();
-    if (settings.basemap !== previousBasemap && this.origin) {
-      const current = this.currentPosition();
-      if (current) this.basemap.update(current);
+    this.basemap.setTerrain(
+      settings.drapeToTerrain ? (lat, lon) => this.elevation.elevationAt(lat, lon) : null,
+      this.originGroundElev
+    );
+    if (needsRebuild) void this.rebuildContent();
+    const current = this.currentPosition();
+    if (current) {
+      void this.updateCameraTarget(current);
+      if (settings.basemap !== previousBasemap && this.origin) this.basemap.update(current);
     }
   }
 
@@ -213,27 +233,112 @@ export class AREngine {
       // the latest filtered fix, so an imprecise first fix costs nothing.
       this.origin = filtered;
       this.basemap.setOrigin(filtered);
-      this.rebuildContent();
+      void this.rebuildContent();
     }
 
-    const enu = toENU(this.origin, filtered);
-    this.targetCameraPosition.set(
-      enu.east,
-      EYE_HEIGHT + this.settings.heightOffset,
-      -enu.north
-    );
+    void this.updateCameraTarget(filtered);
     this.basemap.update(filtered);
   }
 
-  private rebuildContent() {
+  /** Horizontal position from the filtered fix; height from the DEM when draping. */
+  private async updateCameraTarget(fix: LatLon) {
+    if (!this.origin) return;
+    const enu = toENU(this.origin, fix);
+    this.targetCameraPosition.x = enu.east;
+    this.targetCameraPosition.z = -enu.north;
+
+    let groundY = 0;
+    if (this.settings.drapeToTerrain && this.originGroundElev !== null) {
+      if (this.cameraElevCache && haversineDistance(this.cameraElevCache.at, fix) < 3) {
+        groundY = this.cameraElevCache.y;
+      } else {
+        const elev = await this.elevation.elevationAt(fix.lat, fix.lon);
+        if (!this.running) return;
+        if (elev !== null) {
+          groundY = elev - this.originGroundElev;
+          this.cameraElevCache = { at: fix, y: groundY };
+        }
+      }
+    }
+    this.targetCameraPosition.y = groundY + EYE_HEIGHT + this.settings.heightOffset;
+  }
+
+  private async rebuildContent() {
+    const token = ++this.buildToken;
     this.clearContent();
     if (!this.origin) return;
-    const built = buildLayers(this.layers, this.origin, this.settings.useAltitudes);
+
+    let layers = this.layers;
+    let groundYAt: (lon: number, lat: number) => number = () => 0;
+    let altitudeReference = this.origin.alt ?? 0;
+
+    if (this.settings.drapeToTerrain) {
+      const originElev = await this.ensureOriginElevation();
+      if (token !== this.buildToken || !this.running) return;
+      if (originElev !== null) {
+        altitudeReference = originElev;
+        // Densify long segments so lines/outlines follow the slope, then
+        // sample the DEM once for every distinct vertex.
+        layers = this.layers.map((layer) => ({
+          ...layer,
+          geojson: {
+            type: 'FeatureCollection' as const,
+            features: layer.geojson.features.map((feature) =>
+              feature.geometry
+                ? { ...feature, geometry: densifyGeometry(feature.geometry) }
+                : feature
+            ),
+          },
+        }));
+
+        const wanted = new Map<string, { lat: number; lon: number }>();
+        layers
+          .filter((layer) => layer.visible)
+          .forEach((layer) =>
+            layer.geojson.features.forEach((feature) => {
+              if (!feature.geometry) return;
+              forEachPosition(feature.geometry, ([lon, lat]) => {
+                wanted.set(positionKey(lon, lat), { lat, lon });
+              });
+            })
+          );
+
+        const points = Array.from(wanted.values());
+        const elevations = await this.elevation.sampleMany(points);
+        if (token !== this.buildToken || !this.running) return;
+        const lookup = new Map<string, number>();
+        points.forEach((point, i) => {
+          const elev = elevations[i];
+          if (elev !== null) lookup.set(positionKey(point.lon, point.lat), elev - originElev);
+        });
+        groundYAt = (lon, lat) => lookup.get(positionKey(lon, lat)) ?? 0;
+      }
+    }
+
+    const built = buildLayers(layers, this.origin, {
+      useAltitudes: this.settings.useAltitudes,
+      groundYAt,
+      altitudeReference,
+    });
     this.contentGroup = built.group;
     this.lineMaterials = built.lineMaterials;
     this.trackedFeatures = built.featureCount;
     this.scene.add(built.group);
     this.updateLineResolutions();
+  }
+
+  private async ensureOriginElevation(): Promise<number | null> {
+    if (!this.origin) return null;
+    if (this.originGroundElev === null) {
+      this.originGroundElev = await this.elevation.elevationAt(this.origin.lat, this.origin.lon);
+      this.basemap.setTerrain(
+        this.settings.drapeToTerrain && this.originGroundElev !== null
+          ? (lat, lon) => this.elevation.elevationAt(lat, lon)
+          : null,
+        this.originGroundElev
+      );
+    }
+    return this.originGroundElev;
   }
 
   private clearContent() {

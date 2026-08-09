@@ -36,6 +36,10 @@ export const AR_BASEMAPS: Record<Exclude<BasemapKey, 'none'>, TileProvider> = {
 
 const RADIUS_METERS = 260;
 const REFRESH_DISTANCE_METERS = 60;
+const TERRAIN_SEGMENTS = 8;
+const EARTH_RADIUS = 6371000;
+
+type ElevationSampler = (lat: number, lon: number) => Promise<number | null>;
 
 export class BasemapGround {
   readonly group = new THREE.Group();
@@ -45,6 +49,8 @@ export class BasemapGround {
   private opacity = 0.85;
   private origin: LatLon | null = null;
   private lastCenter: LatLon | null = null;
+  private elevationSampler: ElevationSampler | null = null;
+  private originElevation: number | null = null;
 
   constructor() {
     this.group.name = 'fieldar-basemap';
@@ -54,6 +60,18 @@ export class BasemapGround {
   setOrigin(origin: LatLon) {
     this.origin = origin;
     this.lastCenter = null;
+  }
+
+  /** Enable 3D terrain-following tiles; pass null to go back to a flat carpet. */
+  setTerrain(sampler: ElevationSampler | null, originElevation: number | null) {
+    const changed = (sampler !== null) !== (this.elevationSampler !== null) ||
+      originElevation !== this.originElevation;
+    this.elevationSampler = sampler;
+    this.originElevation = originElevation;
+    if (changed) {
+      this.clear();
+      this.lastCenter = null;
+    }
   }
 
   setBasemap(key: BasemapKey) {
@@ -150,8 +168,16 @@ export class BasemapGround {
       depthWrite: false,
       side: THREE.DoubleSide,
     });
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
-    mesh.rotation.x = -Math.PI / 2;
+    const useTerrain = this.elevationSampler !== null && this.originElevation !== null;
+    const geometry = new THREE.PlaneGeometry(
+      width,
+      height,
+      useTerrain ? TERRAIN_SEGMENTS : 1,
+      useTerrain ? TERRAIN_SEGMENTS : 1
+    );
+    // Lay the plane on the ground: local (x, y) -> world (east, -north offset).
+    geometry.rotateX(-Math.PI / 2);
+    const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(centerEast, -0.2, -centerNorth);
     mesh.renderOrder = -10;
     mesh.visible = false;
@@ -164,8 +190,45 @@ export class BasemapGround {
       mesh.visible = true;
     });
 
+    if (useTerrain) {
+      void this.applyTerrainHeights(id, mesh, centerEast, centerNorth);
+    }
+
     this.tiles.set(id, mesh);
     this.group.add(mesh);
+  }
+
+  /** Lift each grid vertex of the tile onto the DEM surface. */
+  private async applyTerrainHeights(
+    id: string,
+    mesh: THREE.Mesh,
+    centerEast: number,
+    centerNorth: number
+  ) {
+    const sampler = this.elevationSampler;
+    const originElevation = this.originElevation;
+    const origin = this.origin;
+    if (!sampler || originElevation === null || !origin) return;
+
+    const positions = mesh.geometry.getAttribute('position') as THREE.BufferAttribute;
+    const latRad = (origin.lat * Math.PI) / 180;
+    const points: Array<{ lat: number; lon: number }> = [];
+    for (let i = 0; i < positions.count; i++) {
+      const east = centerEast + positions.getX(i);
+      const north = centerNorth - positions.getZ(i);
+      points.push({
+        lat: origin.lat + (north / EARTH_RADIUS) * (180 / Math.PI),
+        lon: origin.lon + (east / (EARTH_RADIUS * Math.cos(latRad))) * (180 / Math.PI),
+      });
+    }
+    const elevations = await Promise.all(points.map((p) => sampler(p.lat, p.lon)));
+    if (this.tiles.get(id) !== mesh) return; // tile was replaced meanwhile
+    for (let i = 0; i < positions.count; i++) {
+      const elev = elevations[i];
+      if (elev !== null) positions.setY(i, elev - originElevation);
+    }
+    positions.needsUpdate = true;
+    mesh.geometry.computeBoundingSphere();
   }
 }
 

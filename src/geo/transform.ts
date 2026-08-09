@@ -88,7 +88,7 @@ export function deltaToPosition(vertex: LatLon, target: LatLon): { dEast: number
   return { dEast, dNorth };
 }
 
-function forEachPosition(geometry: GeoJSON.Geometry, fn: (position: number[]) => void) {
+export function forEachPosition(geometry: GeoJSON.Geometry, fn: (position: number[]) => void) {
   switch (geometry.type) {
     case 'Point':
       fn(geometry.coordinates);
