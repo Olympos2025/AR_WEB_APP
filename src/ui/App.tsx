@@ -37,6 +37,9 @@ type Lang = keyof typeof translations;
 
 const secure = typeof window !== 'undefined' ? window.isSecureContext : false;
 
+// Shown in the header so field testers can confirm which build they run.
+export const APP_VERSION = '0.2.0';
+
 function App() {
   const [lang, setLang] = useState<Lang>('el');
   const t = useMemo(() => translations[lang] as Record<string, string>, [lang]);
@@ -420,7 +423,10 @@ function App() {
             className="w-10 h-10"
           />
           <div>
-            <h1 className="text-xl font-semibold">{t.appTitle}</h1>
+            <h1 className="text-xl font-semibold">
+              {t.appTitle}{' '}
+              <span className="text-[10px] font-normal text-slate-500">v{APP_VERSION}</span>
+            </h1>
             <p className="text-xs text-slate-400">{t.permissionsWarning}</p>
           </div>
         </div>
