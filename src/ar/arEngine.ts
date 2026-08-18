@@ -38,6 +38,8 @@ export const DEFAULT_AR_SETTINGS: ARSettings = {
   fov: 65,
 };
 
+export type TerrainState = 'off' | 'loading' | 'active' | 'unavailable';
+
 export interface ARTelemetry {
   accuracy: number | null; // raw accuracy of the latest GPS fix
   estimatedAccuracy: number | null; // filtered estimate; improves over time
@@ -47,6 +49,8 @@ export interface ARTelemetry {
   trackedFeatures: number;
   cameraState: 'pending' | 'ok' | 'error';
   orientationSeen: boolean;
+  terrain: TerrainState;
+  originElevation: number | null; // meters at the anchor, when terrain is active
 }
 
 const EYE_HEIGHT = 1.6;
@@ -79,6 +83,8 @@ export class AREngine {
   private elevation = new ElevationService();
   private buildToken = 0;
   private originGroundElev: number | null = null; // absolute meters at the anchor
+  private originElevFailed = false;
+  private terrainRetryTimer: number | null = null;
   private cameraElevCache: { at: LatLon; y: number } | null = null;
   private targetCameraPosition = new THREE.Vector3(0, EYE_HEIGHT, 0);
   private targetQuaternion = new THREE.Quaternion();
@@ -325,18 +331,38 @@ export class AREngine {
     this.trackedFeatures = built.featureCount;
     this.scene.add(built.group);
     this.updateLineResolutions();
+
+    // Field-debugging hook: inspectable from the browser console / E2E tests.
+    const bounds = new THREE.Box3().setFromObject(built.group);
+    (window as unknown as { __fieldarDebug?: unknown }).__fieldarDebug = {
+      drapeToTerrain: this.settings.drapeToTerrain,
+      originGroundElev: this.originGroundElev,
+      trackedFeatures: built.featureCount,
+      contentYRange: built.featureCount ? [bounds.min.y, bounds.max.y] : null,
+      cameraY: this.targetCameraPosition.y,
+    };
   }
 
   private async ensureOriginElevation(): Promise<number | null> {
     if (!this.origin) return null;
     if (this.originGroundElev === null) {
       this.originGroundElev = await this.elevation.elevationAt(this.origin.lat, this.origin.lon);
+      this.originElevFailed = this.originGroundElev === null;
       this.basemap.setTerrain(
         this.settings.drapeToTerrain && this.originGroundElev !== null
           ? (lat, lon) => this.elevation.elevationAt(lat, lon)
           : null,
         this.originGroundElev
       );
+      // Network hiccup: keep retrying so terrain kicks in as soon as tiles load.
+      if (this.originElevFailed && this.terrainRetryTimer === null) {
+        this.terrainRetryTimer = window.setTimeout(() => {
+          this.terrainRetryTimer = null;
+          if (this.running && this.settings.drapeToTerrain && this.originGroundElev === null) {
+            void this.rebuildContent();
+          }
+        }, 10000);
+      }
     }
     return this.originGroundElev;
   }
@@ -387,6 +413,12 @@ export class AREngine {
 
   private emitTelemetry() {
     if (!this.onTelemetry) return;
+    let terrain: TerrainState = 'off';
+    if (this.settings.drapeToTerrain) {
+      if (this.originGroundElev !== null) terrain = 'active';
+      else if (this.originElevFailed) terrain = 'unavailable';
+      else terrain = 'loading';
+    }
     this.onTelemetry({
       accuracy: this.accuracy,
       estimatedAccuracy: this.estimatedAccuracy,
@@ -396,6 +428,8 @@ export class AREngine {
       trackedFeatures: this.trackedFeatures,
       cameraState: this.cameraState,
       orientationSeen: this.hasOrientation,
+      terrain,
+      originElevation: this.originGroundElev,
     });
   }
 }

@@ -154,6 +154,28 @@ export default function ARView({
         <div className="text-xs">
           {t.featureList}: {telemetry?.trackedFeatures ?? 0}
         </div>
+        {settings.drapeToTerrain && (
+          <div
+            className={`text-xs ${
+              telemetry?.terrain === 'active'
+                ? 'text-emerald-300'
+                : telemetry?.terrain === 'unavailable'
+                  ? 'text-rose-300'
+                  : 'text-slate-300'
+            }`}
+          >
+            {t.terrain}:{' '}
+            {telemetry?.terrain === 'active'
+              ? `${t.terrainActive}${
+                  telemetry.originElevation !== null
+                    ? ` (${telemetry.originElevation.toFixed(0)} m)`
+                    : ''
+                }`
+              : telemetry?.terrain === 'unavailable'
+                ? t.terrainUnavailable
+                : t.terrainLoading}
+          </div>
+        )}
         {telemetry && !telemetry.originSet && (
           <div className="text-[11px] text-amber-300 mt-1">{t.waitingGps}</div>
         )}

@@ -70,14 +70,40 @@ async function fetchTileImage(url: string): Promise<ImageData | null> {
   try {
     const response = await fetch(url, { mode: 'cors' });
     if (!response.ok) return null;
-    const bitmap = await createImageBitmap(await response.blob());
+    const blob = await response.blob();
+    const source = await blobToDrawable(blob);
+    if (!source) return null;
     const canvas = document.createElement('canvas');
     canvas.width = TILE_SIZE;
     canvas.height = TILE_SIZE;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return null;
-    ctx.drawImage(bitmap, 0, 0);
+    ctx.drawImage(source, 0, 0);
     return ctx.getImageData(0, 0, TILE_SIZE, TILE_SIZE);
+  } catch {
+    return null;
+  }
+}
+
+async function blobToDrawable(blob: Blob): Promise<ImageBitmap | HTMLImageElement | null> {
+  if (typeof createImageBitmap === 'function') {
+    try {
+      return await createImageBitmap(blob);
+    } catch {
+      // fall through to the <img> path (older Safari)
+    }
+  }
+  try {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    const objectUrl = URL.createObjectURL(blob);
+    try {
+      img.src = objectUrl;
+      await img.decode();
+      return img;
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
   } catch {
     return null;
   }
