@@ -16,6 +16,7 @@ import {
   screenAngle,
   watchOrientation,
 } from './orientation';
+import { OrientationSmoother } from './orientationFilter';
 import { requestDeviceOrientationPermission, startCameraStream, stopStream } from './sensors';
 
 export interface ARSettings {
@@ -112,6 +113,8 @@ export class AREngine {
   private lastHeightAboveGround: number | null = null;
   private targetCameraPosition = new THREE.Vector3(0, EYE_HEIGHT, 0);
   private targetQuaternion = new THREE.Quaternion();
+  private orientationSmoother = new OrientationSmoother();
+  private lastFrameTime: number | null = null;
   private hasOrientation = false;
   private lastSample: OrientationSample | null = null;
   private accuracy: number | null = null;
@@ -461,6 +464,12 @@ export class AREngine {
     if (!this.running) return;
     this.animationFrame = requestAnimationFrame(this.renderLoop);
 
+    const now = performance.now();
+    const dt = this.lastFrameTime === null
+      ? 1 / 60
+      : Math.min(Math.max((now - this.lastFrameTime) / 1000, 0.001), 0.2);
+    this.lastFrameTime = now;
+
     if (this.lastSample) {
       orientationToQuaternion(
         this.targetQuaternion,
@@ -468,10 +477,17 @@ export class AREngine {
         screenAngle(),
         this.settings.headingOffset
       );
-      // Low-pass filter to damp sensor noise.
-      this.camera.quaternion.slerp(this.targetQuaternion, 0.25);
+      // Adaptive smoothing: steady when holding still, immediate when turning.
+      this.orientationSmoother.apply(this.targetQuaternion, dt, this.camera.quaternion);
     }
-    this.camera.position.lerp(this.targetCameraPosition, 0.08);
+
+    // Position dead-band + adaptive follow: ignore sub-25 cm GPS breathing,
+    // catch up faster the further the target is.
+    const distance = this.camera.position.distanceTo(this.targetCameraPosition);
+    if (distance > 0.25) {
+      const factor = THREE.MathUtils.clamp(distance / 8, 0.02, 0.2);
+      this.camera.position.lerp(this.targetCameraPosition, factor);
+    }
 
     this.renderer.render(this.scene, this.camera);
   };

@@ -38,7 +38,7 @@ type Lang = keyof typeof translations;
 const secure = typeof window !== 'undefined' ? window.isSecureContext : false;
 
 // Shown in the header so field testers can confirm which build they run.
-export const APP_VERSION = '0.2.0';
+export const APP_VERSION = '0.2.1';
 
 function App() {
   const [lang, setLang] = useState<Lang>('el');
