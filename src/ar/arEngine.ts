@@ -23,6 +23,9 @@ export interface ARSettings {
   heightOffset: number; // m, camera height above ground
   useAltitudes: boolean; // honor per-vertex altitudes from the file
   drapeToTerrain: boolean; // drape geometry on real terrain elevations (DEM)
+  // Camera height from the device's GPS altitude instead of assuming the user
+  // stands on the DEM surface — needed on rooftops, balconies, bridges.
+  useGpsAltitude: boolean;
   basemap: BasemapKey;
   basemapOpacity: number;
   fov: number; // vertical fov in degrees
@@ -33,6 +36,7 @@ export const DEFAULT_AR_SETTINGS: ARSettings = {
   heightOffset: 0,
   useAltitudes: false,
   drapeToTerrain: true,
+  useGpsAltitude: false,
   basemap: 'none',
   basemapOpacity: 0.85,
   fov: 65,
@@ -51,12 +55,27 @@ export interface ARTelemetry {
   orientationSeen: boolean;
   terrain: TerrainState;
   originElevation: number | null; // meters at the anchor, when terrain is active
+  /** Camera height above the DEM ground (m) when GPS-altitude mode is on. */
+  heightAboveGround: number | null;
+  gpsAltitudeSeen: boolean; // device reports an altitude at all
 }
 
 const EYE_HEIGHT = 1.6;
 
 function positionKey(lon: number, lat: number): string {
   return `${lon.toFixed(7)},${lat.toFixed(7)}`;
+}
+
+const ALTITUDE_BIAS_KEY = 'fieldar.altitudeBias';
+
+function readStoredAltitudeBias(): number {
+  try {
+    const raw = localStorage.getItem(ALTITUDE_BIAS_KEY);
+    const value = raw === null ? 0 : Number(raw);
+    return Number.isFinite(value) ? value : 0;
+  } catch {
+    return 0;
+  }
 }
 
 export class AREngine {
@@ -86,6 +105,11 @@ export class AREngine {
   private originElevFailed = false;
   private terrainRetryTimer: number | null = null;
   private cameraElevCache: { at: LatLon; y: number } | null = null;
+  private gpsAltSmoothed: number | null = null;
+  // Difference between the device altitude datum and the DEM datum; set by the
+  // "I am at ground level" calibration and persisted per device.
+  private altitudeBias = readStoredAltitudeBias();
+  private lastHeightAboveGround: number | null = null;
   private targetCameraPosition = new THREE.Vector3(0, EYE_HEIGHT, 0);
   private targetQuaternion = new THREE.Quaternion();
   private hasOrientation = false;
@@ -222,6 +246,13 @@ export class AREngine {
 
   private handlePosition(pos: GeolocationPosition) {
     this.accuracy = pos.coords.accuracy ?? null;
+    const rawAlt = pos.coords.altitude;
+    if (rawAlt !== null && !Number.isNaN(rawAlt)) {
+      this.gpsAltSmoothed =
+        this.gpsAltSmoothed === null
+          ? rawAlt
+          : this.gpsAltSmoothed + 0.25 * (rawAlt - this.gpsAltSmoothed);
+    }
     // Accuracy-weighted filtering: the position estimate converges on its own
     // as GPS quality improves, so the overlay self-corrects over time.
     const filtered = this.gpsFilter.update({
@@ -246,7 +277,7 @@ export class AREngine {
     this.basemap.update(filtered);
   }
 
-  /** Horizontal position from the filtered fix; height from the DEM when draping. */
+  /** Horizontal position from the filtered fix; height from DEM or GPS altitude. */
   private async updateCameraTarget(fix: LatLon) {
     if (!this.origin) return;
     const enu = toENU(this.origin, fix);
@@ -266,7 +297,41 @@ export class AREngine {
         }
       }
     }
-    this.targetCameraPosition.y = groundY + EYE_HEIGHT + this.settings.heightOffset;
+
+    if (
+      this.settings.useGpsAltitude &&
+      this.gpsAltSmoothed !== null &&
+      this.originGroundElev !== null
+    ) {
+      // Height above the world datum straight from the (bias-corrected) GPS
+      // altitude, so rooftops/bridges place the camera above the DEM surface.
+      const y = this.gpsAltSmoothed - this.altitudeBias - this.originGroundElev;
+      const clamped = Math.max(y, groundY + 0.5); // never below the ground
+      this.lastHeightAboveGround = clamped - groundY;
+      this.targetCameraPosition.y = clamped + this.settings.heightOffset;
+    } else {
+      this.lastHeightAboveGround = null;
+      this.targetCameraPosition.y = groundY + EYE_HEIGHT + this.settings.heightOffset;
+    }
+  }
+
+  /**
+   * "I am at ground level" calibration: aligns the device altitude datum with
+   * the DEM so GPS-altitude mode measures true height above the ground.
+   */
+  async calibrateGroundLevel(): Promise<boolean> {
+    const fix = this.currentPosition();
+    if (!fix || this.gpsAltSmoothed === null) return false;
+    const elev = await this.elevation.elevationAt(fix.lat, fix.lon);
+    if (elev === null) return false;
+    this.altitudeBias = this.gpsAltSmoothed - elev;
+    try {
+      localStorage.setItem(ALTITUDE_BIAS_KEY, String(this.altitudeBias));
+    } catch {
+      // storage may be unavailable; the bias still applies for this session
+    }
+    void this.updateCameraTarget(fix);
+    return true;
   }
 
   private async rebuildContent() {
@@ -430,6 +495,8 @@ export class AREngine {
       orientationSeen: this.hasOrientation,
       terrain,
       originElevation: this.originGroundElev,
+      heightAboveGround: this.lastHeightAboveGround,
+      gpsAltitudeSeen: this.gpsAltSmoothed !== null,
     });
   }
 }
