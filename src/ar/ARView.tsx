@@ -47,6 +47,7 @@ export default function ARView({
   const [targetLayerId, setTargetLayerId] = useState<string>('all');
   const [nearestFeatureOnly, setNearestFeatureOnly] = useState(false);
   const [correctionStatus, setCorrectionStatus] = useState<string | null>(null);
+  const [altitudeStatus, setAltitudeStatus] = useState<string | null>(null);
 
   // Keep the latest props in refs so the engine effect only reruns on `active`.
   const settingsRef = useRef(settings);
@@ -154,6 +155,11 @@ export default function ARView({
         <div className="text-xs">
           {t.featureList}: {telemetry?.trackedFeatures ?? 0}
         </div>
+        {settings.useGpsAltitude && telemetry?.heightAboveGround !== null && telemetry?.heightAboveGround !== undefined && (
+          <div className="text-xs text-cyan-300">
+            {t.heightAboveGround}: {telemetry.heightAboveGround.toFixed(1)} m
+          </div>
+        )}
         {settings.drapeToTerrain && (
           <div
             className={`text-xs ${
@@ -363,6 +369,32 @@ export default function ARView({
               />
               <span>{t.drapeToTerrain}</span>
             </label>
+            <div className="col-span-1 sm:col-span-2 border border-slate-700 rounded-lg p-2 space-y-2">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={settings.useGpsAltitude}
+                  onChange={(e) => update({ useGpsAltitude: e.target.checked })}
+                />
+                <span>{t.useGpsAltitude}</span>
+              </label>
+              <p className="text-[11px] text-slate-400">{t.useGpsAltitudeHint}</p>
+              {settings.useGpsAltitude && !telemetry?.gpsAltitudeSeen && (
+                <p className="text-[11px] text-amber-300">{t.noGpsAltitude}</p>
+              )}
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={async () => {
+                    const ok = await engineRef.current?.calibrateGroundLevel();
+                    setAltitudeStatus(ok ? t.groundCalibrated : t.groundCalibrationFailed);
+                  }}
+                  className="bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-xs"
+                >
+                  {t.calibrateGround}
+                </button>
+                {altitudeStatus && <span className="text-xs text-cyan-300">{altitudeStatus}</span>}
+              </div>
+            </div>
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
