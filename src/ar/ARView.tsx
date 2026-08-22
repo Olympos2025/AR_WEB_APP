@@ -333,9 +333,9 @@ export default function ARView({
               </span>
               <input
                 type="range"
-                min={-10}
-                max={10}
-                step={0.5}
+                min={-100}
+                max={100}
+                step={1}
                 value={settings.heightOffset}
                 onChange={(e) => update({ heightOffset: Number(e.target.value) })}
                 className="w-full"
