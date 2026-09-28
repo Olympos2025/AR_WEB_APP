@@ -54,7 +54,7 @@
 <div class="acts"><button class="btn" id="loginBtn" onclick="doLogin()">Είσοδος</button><button class="btn sec" onclick="forget()">Άλλος χώρος</button></div>
 </div></div></div><div id="toast" class="toast"></div>
 <script>
-var API='https://api.jsonstorage.net/v1/json', DEF={base:15,local:10,long:10,longMin:15,wait:5,waitFree:30,standby:5}, uri=null,D=null,role=null,selectedRole='parent';
+var API='https://superjsonblob.com/api/jsonBlob', FALLBACK_API='https://mantledb.sh/v2', DEF={base:15,local:10,long:10,longMin:15,wait:5,waitFree:30,standby:5}, uri=null,D=null,role=null,selectedRole='parent';
 var q=function(s){return document.querySelector(s)}, qa=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
 function euro(n){return new Intl.NumberFormat('el-GR',{style:'currency',currency:'EUR'}).format(Number(n||0))}
 function day(){return new Date().toLocaleDateString('sv-SE')} function id(){return crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random()}
@@ -63,7 +63,23 @@ function toast(s){var t=q('#toast');t.textContent=s;t.classList.add('show');clea
 async function hash(s){var b=new TextEncoder().encode(String(s)),h=await crypto.subtle.digest('SHA-256',b);return Array.from(new Uint8Array(h)).map(function(x){return x.toString(16).padStart(2,'0')}).join('')}
 function code(u){return btoa(unescape(encodeURIComponent(u))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')} function dec(s){try{s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';return decodeURIComponent(escape(atob(s)))}catch(e){return null}}
 function link(){return location.href.split('#')[0]+'#w='+code(uri)} function r(){return Object.assign({},DEF,(D&&D.rates)||{})}
-async function get(){var x=await fetch(uri,{cache:'no-store'});if(!x.ok)throw 0;return x.json()} async function put(x){x.updatedAt=new Date().toISOString();var z=await fetch(uri,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(x)});if(!z.ok)throw 0;return x}
+async function get(){var x=await fetch(uri,{cache:'no-store'});if(!x.ok)throw new Error('GET '+x.status);return x.json()}
+async function put(x){x.updatedAt=new Date().toISOString();var method=uri.indexOf('mantledb.sh')>-1?'POST':'PUT';var z=await fetch(uri,{method:method,headers:{'Content-Type':'application/json'},body:JSON.stringify(x)});if(!z.ok)throw new Error('SAVE '+z.status);return x}
+async function createStore(init){
+  try{
+    var z=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(init)});
+    if(!z.ok)throw new Error('CREATE '+z.status);
+    var out=await z.json();
+    if(!out||!out.id)throw new Error('NO_ID');
+    return API+'/'+out.id;
+  }catch(e){
+    var ns='iatrikos-'+id().replace(/[^a-zA-Z0-9-]/g,'').toLowerCase();
+    var u=FALLBACK_API+'/'+ns+'/workspace';
+    var f=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(init)});
+    if(!f.ok)throw new Error('FALLBACK '+f.status);
+    return u;
+  }
+}
 async function change(fn){q('#sync').textContent='Αποθήκευση…';var x=await get();fn(x);D=await put(x);localStorage.setItem('dr.cache',JSON.stringify(D));q('#sync').textContent='Συγχρονισμένο';render()}
 async function sync(silent){try{q('#sync').textContent='Συγχρονισμός…';D=await get();localStorage.setItem('dr.cache',JSON.stringify(D));q('#sync').textContent='Συγχρονισμένο';render();if(!silent)toast('Ενημερώθηκε')}catch(e){var c=localStorage.getItem('dr.cache');if(c&&!D)D=JSON.parse(c);q('#sync').textContent='Offline αντίγραφο';render();if(!silent)toast('Δεν έγινε σύνδεση')}}
 function mins(a,b){if(!a||!b)return 0;var A=a.split(':').map(Number),B=b.split(':').map(Number),x=A[0]*60+A[1],y=B[0]*60+B[1];if(y<x)y+=1440;return Math.max(0,y-x)}
@@ -86,7 +102,7 @@ async function aiFill(){var t=q('#aitxt').value.trim();if(!t)return toast('Γρ�
 function go(v){qa('.view').forEach(function(x){x.classList.add('hide')});q('#v-'+v).classList.remove('hide');qa('.nav button').forEach(function(x){x.classList.toggle('on',x.dataset.v===v)});if(v==='add'&&!q('#date').value)reset();window.scrollTo(0,0)}
 qa('.nav button').forEach(function(b){b.onclick=function(){go(b.dataset.v)}});['type','start','end','wait'].forEach(function(x){q('#'+x).addEventListener('input',preview)});
 function selectRole(x){selectedRole=x;qa('.rolecard').forEach(function(b){b.classList.toggle('on',b.dataset.role===x)});var lab=q('#pinLabel'),hint=q('#authHint'),btn=q('#loginBtn');if(lab)lab.textContent=x==='parent'?'PIN θείου':'PIN ανιψιού';if(D&&D.auth){var has=!!D.auth[x];if(btn)btn.textContent=has?'Είσοδος':'Ορισμός PIN & είσοδος';if(hint)hint.textContent=has?'Χρειάζεται μόνο το PIN αυτού του ρόλου.':'Ο ρόλος δεν έχει PIN ακόμη. Το PIN που θα βάλεις τώρα θα αποθηκευτεί ως προσωπικό του PIN.'}}
-async function makeWs(){var p=q('#ppin').value.trim();if(!/^\d{4,8}$/.test(p))return toast('Βάλε PIN 4–8 ψηφίων');try{var h=await hash(p),auth={parent:null,driver:null};auth[selectedRole]=h;var init={version:2,auth:auth,rates:Object.assign({},DEF),entries:[],payments:[],createdAt:new Date().toISOString()};var z=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(init)});if(!z.ok)throw 0;var out=await z.json();uri=out.uri;D=init;role=selectedRole;localStorage.setItem('dr.uri',uri);localStorage.setItem('dr.role',role);history.replaceState(null,'',location.pathname+'#w='+code(uri));enter();toast('Ο κοινός χώρος δημιουργήθηκε')}catch(e){toast('Δεν δημιουργήθηκε ο online χώρος')}}
+async function makeWs(){var p=q('#ppin').value.trim();if(!/^\d{4,8}$/.test(p))return toast('Βάλε PIN 4–8 ψηφίων');try{var h=await hash(p),auth={parent:null,driver:null};auth[selectedRole]=h;var init={version:2,auth:auth,rates:Object.assign({},DEF),entries:[],payments:[],createdAt:new Date().toISOString()};uri=await createStore(init);D=init;role=selectedRole;localStorage.setItem('dr.uri',uri);localStorage.setItem('dr.role',role);history.replaceState(null,'',location.pathname+'#w='+code(uri));enter();toast('Ο κοινός χώρος δημιουργήθηκε')}catch(e){console.error(e);toast('Δεν δημιουργήθηκε ο online χώρος — δοκίμασε ξανά')}}
 async function doLogin(){var p=q('#lpin').value.trim();if(!/^\d{4,8}$/.test(p))return toast('Βάλε PIN 4–8 ψηφίων');try{var h=await hash(p),x=await get();x.auth=x.auth||{parent:null,driver:null};if(x.auth[selectedRole]){if(h!==x.auth[selectedRole])return toast('Λάθος PIN για αυτόν τον ρόλο');D=x;role=selectedRole;localStorage.setItem('dr.role',role);enter();return}x.auth[selectedRole]=h;D=await put(x);role=selectedRole;localStorage.setItem('dr.role',role);localStorage.setItem('dr.cache',JSON.stringify(D));enter();toast('Το προσωπικό PIN ενεργοποιήθηκε')}catch(e){toast('Δεν έγινε είσοδος — έλεγξε τη σύνδεση')}}
 function enter(){q('#modal').classList.add('hide');q('#app').classList.remove('hide');localStorage.setItem('dr.uri',uri);q('#paydate').value=day();reset();render();sync(true)}
 function logout(){var old=role;localStorage.removeItem('dr.role');role=null;selectedRole=old||'parent';q('#app').classList.add('hide');q('#modal').classList.remove('hide');q('#create').classList.add('hide');q('#login').classList.remove('hide');q('#lpin').value='';selectRole(selectedRole)}
