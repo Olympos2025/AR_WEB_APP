@@ -334,7 +334,7 @@ function animateMoney(el,n){n=Number(n||0);if(!el)return;if(window.matchMedia&&w
 function rowHtml(g){
   var tags=g.e.map(function(e){
     var a=isExtra(e)?entryAmount(e):0,label=isExtra(e)?'Έκτακτο':'Ημέρα',dest=e.dest?' • '+esc(e.dest):'',amt=isExtra(e)?' • '+(a?euro(a):'χωρίς ποσό'):'';
-    var edit=isExtra(e)?'<div class="extraedit"><button class="btn secondary small" onclick="editExtra(\\''+esc(e.id)+'\\')">Ορισμός ποσού</button></div>':'';
+    var edit=isExtra(e)?'<div class="extraedit"><button class="btn secondary small" data-eid="'+esc(e.id)+'" onclick="editExtra(this.dataset.eid)">Ορισμός ποσού</button></div>':'';
     return '<div class="tag">'+label+dest+amt+'</div>'+edit;
   }).join('');
   return '<div class="row"><div class="rowtop"><div><h4>'+esc(g.d)+'</h4><div class="meta">Ημερήσια βάση '+euro(dailyRate())+' • έκτακτα '+euro(g.extras)+'</div></div><div class="money">'+euro(g.t)+'</div></div>'+tags+'</div>'
