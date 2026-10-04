@@ -405,12 +405,98 @@ canvas{display:block;width:100%;max-width:520px;aspect-ratio:3/4;margin:auto;bac
   .miami-marquee-track{animation-duration:8s}
 }
 
+
+/* EXTREME 80s METRICS */
+.metric{
+  isolation:isolate;
+  border:2px solid #fff;
+  box-shadow:
+    8px 8px 0 rgba(255,111,174,.38),
+    -5px -5px 0 rgba(89,216,208,.28),
+    0 20px 36px rgba(16,23,47,.16);
+  transform:skewX(-1.6deg);
+  animation:metricHover 3.2s ease-in-out infinite;
+}
+.metric:nth-child(1){
+  background:linear-gradient(135deg,#d9fff8 0%,#82e7dc 45%,#f9f1e9 46%,#fff7f1 100%);
+}
+.metric:nth-child(2){
+  background:linear-gradient(135deg,#ffe0ea 0%,#ff8bb8 42%,#ffe8dc 43%,#fff8f2 100%);
+  animation-delay:.45s;
+}
+.metric:nth-child(3){
+  background:linear-gradient(135deg,#ddd5ff 0%,#8d79e8 42%,#ffd2e3 43%,#fff8f3 100%);
+  animation-delay:.9s;
+}
+.metric:before{
+  content:"";
+  position:absolute;inset:auto -10% -34% auto;
+  width:150px;height:120px;
+  border:3px solid rgba(16,23,47,.14);
+  transform:rotate(-14deg);
+  background:
+    linear-gradient(rgba(16,23,47,.08) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(16,23,47,.08) 1px,transparent 1px);
+  background-size:14px 14px;
+  z-index:-1;
+}
+.metric:after{
+  content:"";
+  position:absolute;left:-20%;top:12%;width:40%;height:12px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.95),transparent);
+  transform:skewX(-25deg);
+  animation:metricSweep 2.6s ease-in-out infinite;
+}
+.metric .label{
+  font:700 10px/1 "Fira Sans Condensed",sans-serif;
+  font-style:italic;
+  letter-spacing:.18em;
+  color:var(--night);
+  text-shadow:1px 1px 0 rgba(255,255,255,.65);
+}
+.metric strong{
+  font:400 42px/.95 "Anton",sans-serif;
+  font-style:italic;
+  color:#fff;
+  text-shadow:
+    3px 3px 0 var(--night),
+    6px 6px 0 rgba(255,111,174,.55),
+    0 0 18px rgba(89,216,208,.65);
+  transform:skewX(-6deg);
+  animation:metricNumberPulse 1.9s ease-in-out infinite;
+}
+.metric small{
+  display:inline-block;
+  width:max-content;
+  max-width:100%;
+  padding:4px 7px;
+  border-radius:2px 8px 2px 8px;
+  background:rgba(16,23,47,.82);
+  color:#fff;
+  font-size:8px;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  box-shadow:3px 3px 0 rgba(89,216,208,.45);
+}
+@keyframes metricHover{
+  0%,100%{transform:skewX(-1.6deg) translateY(0) rotate(0deg)}
+  50%{transform:skewX(-1.6deg) translateY(-5px) rotate(.3deg)}
+}
+@keyframes metricSweep{
+  0%,45%{left:-35%}
+  70%,100%{left:120%}
+}
+@keyframes metricNumberPulse{
+  0%,100%{transform:skewX(-6deg) scale(1)}
+  50%{transform:skewX(-6deg) scale(1.06)}
+}
+
 </style>
 </head>
 <body><div class="vhs-overlay" aria-hidden="true"></div><div class="vhs-flash" aria-hidden="true"></div>
 <div id="app" class="shell hide">
   <div class="topbar">
-    <div class="brand"><div class="mark"></div><div><div class="wordmark">PouPame</div><div class="tagline">..γιατρέ μου?</div></div></div>
+    <div class="brand"><div class="mark"></div><div><div class="wordmark">PouPame</div><div class="tagline">MED DRIVER SERVICES</div></div></div>
     <div class="sync" id="sync">Συγχρονισμένο</div>
   </div>
 
@@ -419,7 +505,7 @@ canvas{display:block;width:100%;max-width:520px;aspect-ratio:3/4;margin:auto;bac
       <div class="hero-copy">
         <div class="kicker">MIAMI • 1986 • DRIVER LOG</div>
         <h1 id="heroTitle">PouPame</h1>
-        <p id="heroText">Σου πήραν το δίπλωμα. Του δίνεις εμπειρία ζωής. Από το κόκκινο φανάρι στο pink neon — growth.</p>
+        <p id="heroText"><strong>PouPame</strong> — family backup, neon edition.</p>
         <div class="actions"><button class="btn aqua" onclick="go('add')">+ Νέα καταγραφή</button><button class="btn secondary" onclick="shareWs()">Κοινή χρήση</button></div>
       </div>
       <div class="hero-graphic" aria-hidden="true">
@@ -435,9 +521,9 @@ canvas{display:block;width:100%;max-width:520px;aspect-ratio:3/4;margin:auto;bac
     </div>
 
     <div class="grid">
-      <div class="card metric"><span class="label">Σήμερα</span><strong id="stoday">0,00 €</strong><small id="stoday2">—</small></div>
-      <div class="card metric"><span class="label">Μήνας</span><strong id="smonth">0,00 €</strong><small id="smonth2">0 ενεργές ημέρες</small></div>
-      <div class="card metric"><span class="label">PouPiges</span><strong id="sbal">0,00 €</strong><small>μετά τις πληρωμές</small></div>
+      <div class="card metric"><span class="label">TONIGHT</span><strong id="stoday">0,00 €</strong><small id="stoday2">—</small></div>
+      <div class="card metric"><span class="label">THIS MONTH</span><strong id="smonth">0,00 €</strong><small id="smonth2">0 ενεργές ημέρες</small></div>
+      <div class="card metric"><span class="label">POUPIGES</span><strong id="sbal">0,00 €</strong><small>μετά τις πληρωμές</small></div>
       <div class="card"><div class="sectionhead"><h3>Πρόσφατες καταχωρίσεις</h3><span class="pill" id="baseBadge">15 € / ημέρα</span></div><div id="recent" class="list"></div></div>
     </div>
   </section>
@@ -504,7 +590,7 @@ canvas{display:block;width:100%;max-width:520px;aspect-ratio:3/4;margin:auto;bac
 
 <div id="authModal" class="modal">
   <div class="modalbox">
-    <div class="brand"><div class="mark"></div><div><div class="wordmark">PouPame</div><div class="tagline">..γιατρέ μου?</div></div></div>
+    <div class="brand"><div class="mark"></div><div><div class="wordmark">PouPame</div><div class="tagline">MED DRIVER SERVICES</div></div></div>
     <div id="create">
       <h2>Δικό σου PIN. Δικός σου ρόλος.</h2>
       <p>Ορίζεις μόνο το PIN του ρόλου σου. Ο άλλος ενεργοποιείται αργότερα από τον ίδιο κοινό σύνδεσμο.</p>
@@ -601,7 +687,7 @@ function render(){
   q('#ratesNav').classList.toggle('hide',role!=='parent');q('#gameNav').classList.toggle('hide',role!=='driver');
   q('#dailyRateInput').value=dailyRate();q('#wlink').textContent=link();q('#setrole').textContent=role==='parent'?'Θείος':'Ανιψιός / οδηγός';
   q('#heroTitle').textContent=role==='parent'?'PouPame':'PouPiges';
-  q('#heroText').textContent=role==='parent'?'Σου πήραν το δίπλωμα. Του δίνεις εμπειρία ζωής. Από το κόκκινο φανάρι στο pink neon — growth.':'Μελλοντικός γιατρός. Προσωρινός chauffeur. Τουλάχιστον το residency θα είναι πιο ήρεμο.';
+  q('#heroText').innerHTML='<strong>PouPame</strong> — family backup, neon edition.';
   renderRates();
   q('#pays').innerHTML=D.payments.slice().sort(function(a,b){return b.date.localeCompare(a.date)}).map(function(p){return '<div class="row"><div class="rowtop"><div><h4>'+esc(p.date)+'</h4><div class="meta">'+esc(p.note||'Πληρωμή')+'</div></div><div class="money">− '+euro(p.amount)+'</div></div></div>'}).join('')||'<div class="empty">Δεν υπάρχουν πληρωμές.</div>';
   toggleAmount();preview();
@@ -708,5 +794,5 @@ document.addEventListener('keydown',function(e){if(e.key==='ArrowLeft')game.keys
 
 q('#date').value=day();q('#paydate').value=day();boot();
 </script>
-<div style="position:fixed;right:8px;top:6px;z-index:9999;font:700 9px/1 DM Sans,sans-serif;color:#10172f;background:#9be7df;border:1px solid rgba(16,23,47,.15);padding:4px 6px;border-radius:2px 7px 2px 7px;opacity:.9;pointer-events:none">MIAMI BUILD 80.3 · MAXIMUM</div></body>
+<div style="position:fixed;right:8px;top:6px;z-index:9999;font:700 9px/1 DM Sans,sans-serif;color:#10172f;background:#9be7df;border:1px solid rgba(16,23,47,.15);padding:4px 6px;border-radius:2px 7px 2px 7px;opacity:.9;pointer-events:none">MIAMI BUILD 80.4 · MAXIMUM</div></body>
 </html>
