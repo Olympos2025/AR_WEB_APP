@@ -1,0 +1,16 @@
+{
+  "name": "pounapao-live",
+  "version": "2.6.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "ai": "^6.0.0"
+  }
+}
