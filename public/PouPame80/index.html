@@ -491,6 +491,117 @@ canvas{display:block;width:100%;max-width:520px;aspect-ratio:3/4;margin:auto;bac
   50%{transform:skewX(-6deg) scale(1.06)}
 }
 
+
+/* MIDNIGHT MIAMI OVERRIDE — BUILD 80.5 */
+:root{
+  --night:#070b18;
+  --night2:#111a36;
+  --cream:#0a0e1d;
+  --sand:#0d1328;
+  --ink:#f7f4ff;
+  --muted:#aab0c3;
+  --white:#11182f;
+  --line:rgba(255,255,255,.12);
+}
+html{background:#070b18!important}
+body{
+  color:#f7f4ff!important;
+  background:
+    radial-gradient(900px 520px at 50% -10%,rgba(120,99,216,.22),transparent 55%),
+    radial-gradient(700px 460px at 100% 10%,rgba(255,111,174,.18),transparent 58%),
+    radial-gradient(700px 480px at 0% 18%,rgba(89,216,208,.12),transparent 58%),
+    linear-gradient(180deg,#070b18 0%,#0b1023 48%,#080b16 100%)!important;
+}
+body:before{
+  opacity:.14!important;
+  mix-blend-mode:screen!important;
+  background:
+    radial-gradient(circle at 12% 18%,rgba(255,255,255,.9) 0 1px,transparent 1.2px),
+    radial-gradient(circle at 72% 22%,rgba(255,255,255,.7) 0 1px,transparent 1.2px),
+    radial-gradient(circle at 44% 11%,rgba(255,255,255,.65) 0 1px,transparent 1.2px),
+    radial-gradient(circle at 87% 32%,rgba(255,255,255,.6) 0 1px,transparent 1.2px),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.09) 0 1px,transparent 1px 5px)!important;
+  background-size:180px 160px,220px 190px,260px 210px,300px 240px,auto!important;
+}
+.topbar{
+  background:linear-gradient(180deg,rgba(7,11,24,.98),rgba(7,11,24,.86),transparent)!important;
+}
+.wordmark{font-size:31px!important;color:#8ff7ee!important;text-shadow:3px 3px 0 #ff69aa,6px 6px 0 rgba(0,0,0,.35),0 0 24px rgba(89,216,208,.45)!important}
+.tagline{font-size:19px!important;color:#ff86b9!important;text-shadow:0 0 14px rgba(255,111,174,.35)!important}
+.sync{background:rgba(17,24,47,.86)!important;color:#dfe7ff!important;border-color:rgba(255,255,255,.12)!important}
+
+.hero{
+  min-height:340px!important;
+  background:
+    radial-gradient(260px 240px at 78% 28%,rgba(255,111,174,.22),transparent 60%),
+    linear-gradient(180deg,#0b1130 0%,#151a44 48%,#4b235f 72%,#b44278 100%)!important;
+  box-shadow:12px 12px 0 rgba(89,216,208,.28),0 28px 70px rgba(0,0,0,.48)!important;
+}
+.hero:before{opacity:1!important;filter:drop-shadow(0 0 38px rgba(255,111,174,.45)) saturate(1.25)!important}
+.hero h1{font-size:clamp(68px,12vw,108px)!important;color:#b7fff8!important;text-shadow:4px 4px 0 #ff66aa,8px 8px 0 rgba(0,0,0,.38),0 0 26px rgba(89,216,208,.55)!important}
+.hero p{font-size:14px!important;line-height:1.55!important;color:#fff3fb!important;max-width:600px!important}
+.kicker{font-size:10px!important;background:rgba(7,11,24,.5)!important}
+
+.card{
+  background:linear-gradient(180deg,rgba(17,24,47,.96),rgba(11,16,35,.98))!important;
+  border-color:rgba(255,255,255,.11)!important;
+  box-shadow:8px 8px 0 rgba(255,111,174,.12),0 18px 42px rgba(0,0,0,.28)!important;
+  color:#f7f4ff!important;
+}
+.sectionhead h3,.row h4,.money,.calc strong,.rate b{color:#f8f4ff!important}
+.meta,.hint,.rate span,.note,.share{color:#aeb5c8!important}
+.row{background:rgba(12,18,39,.94)!important;border-color:rgba(255,255,255,.08)!important}
+.tag{background:rgba(255,255,255,.065)!important;color:#d5d9e6!important}
+.smart{background:linear-gradient(135deg,rgba(120,99,216,.18),rgba(89,216,208,.08))!important;border-color:rgba(143,124,255,.24)!important}
+.smart b{color:#f7f4ff!important}
+input,select,textarea{background:#0b1023!important;color:#fff!important;border-color:rgba(255,255,255,.12)!important}
+.rate,.note,.share{background:#0b1023!important;border-color:rgba(255,255,255,.09)!important}
+
+.metric{
+  min-height:145px!important;
+  background:linear-gradient(145deg,#111a36 0%,#18234c 48%,#2f1d4d 100%)!important;
+  border:2px solid rgba(255,255,255,.18)!important;
+  box-shadow:9px 9px 0 rgba(255,111,174,.32),-6px -6px 0 rgba(89,216,208,.18),0 22px 50px rgba(0,0,0,.34)!important;
+}
+.metric:nth-child(2){background:linear-gradient(145deg,#16172f 0%,#3d2048 52%,#6f2c5d 100%)!important}
+.metric:nth-child(3){background:linear-gradient(145deg,#111933 0%,#252054 52%,#4c2f67 100%)!important}
+.metric .label{font-size:12px!important;color:#fff!important;text-shadow:0 0 10px rgba(255,255,255,.15)!important}
+.metric strong{font-size:54px!important;color:#a9fff6!important;text-shadow:4px 4px 0 #07101e,7px 7px 0 rgba(255,111,174,.65),0 0 22px rgba(89,216,208,.7)!important}
+.metric small{font-size:9px!important;background:rgba(7,11,24,.78)!important;color:#fff!important}
+
+.nav{
+  background:rgba(7,11,24,.96)!important;
+  border-color:rgba(255,255,255,.13)!important;
+  box-shadow:7px 7px 0 rgba(255,111,174,.25),0 16px 48px rgba(0,0,0,.48)!important;
+}
+.nav button{font-size:9px!important;color:#aab0c3!important}
+.nav button:before{font-size:17px!important}
+.nav button.on{color:#07101e!important;background:#71e9df!important}
+
+.modal{background:linear-gradient(180deg,rgba(4,7,17,.88),rgba(15,10,31,.93))!important}
+.modalbox{
+  background:linear-gradient(180deg,#11182f,#0a0f20)!important;
+  color:#fff!important;border-color:rgba(255,255,255,.15)!important;
+}
+.modalbox h2{color:#fff!important}
+.modalbox p,.authhint,.rolecard span{color:#aeb5c8!important}
+.rolecard{background:#0c1227!important;color:#fff!important;border-color:rgba(255,255,255,.11)!important}
+.rolecard.on{background:#1c1730!important;border-color:rgba(255,111,174,.38)!important}
+
+.game-card{background:#0b1023!important}
+.game-shell{box-shadow:8px 8px 0 rgba(255,111,174,.38),0 18px 44px rgba(0,0,0,.35)!important}
+
+@media(max-width:700px){
+  .wordmark{font-size:28px!important}
+  .tagline{font-size:18px!important}
+  .hero{min-height:330px!important}
+  .hero h1{font-size:78px!important}
+  .hero p{font-size:13px!important}
+  .metric{min-height:132px!important}
+  .metric strong{font-size:48px!important}
+  .metric .label{font-size:11px!important}
+}
+
 </style>
 </head>
 <body><div class="vhs-overlay" aria-hidden="true"></div><div class="vhs-flash" aria-hidden="true"></div>
@@ -794,5 +905,5 @@ document.addEventListener('keydown',function(e){if(e.key==='ArrowLeft')game.keys
 
 q('#date').value=day();q('#paydate').value=day();boot();
 </script>
-<div style="position:fixed;right:8px;top:6px;z-index:9999;font:700 9px/1 DM Sans,sans-serif;color:#10172f;background:#9be7df;border:1px solid rgba(16,23,47,.15);padding:4px 6px;border-radius:2px 7px 2px 7px;opacity:.9;pointer-events:none">MIAMI BUILD 80.4 · MAXIMUM</div></body>
+<div style="position:fixed;right:8px;top:6px;z-index:9999;font:700 9px/1 DM Sans,sans-serif;color:#10172f;background:#9be7df;border:1px solid rgba(16,23,47,.15);padding:4px 6px;border-radius:2px 7px 2px 7px;opacity:.9;pointer-events:none">MIAMI BUILD 80.5 · MIDNIGHT</div></body>
 </html>
