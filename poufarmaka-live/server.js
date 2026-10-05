@@ -59,11 +59,11 @@ table,tbody,tr,td,th{background-color:transparent!important;color:#fff!important
 @media(max-width:700px){body{font-size:17px!important}button,[role="button"]{font-size:16px!important;min-height:46px!important}input,select,textarea{font-size:16px!important}}
 </style>
 <script>
-(()=>{const rename=()=>{document.title='PouFarmaka · Miami Nights';document.querySelectorAll('h1,h2,h3,[class*="brand"],[class*="logo"]').forEach(el=>{if(/φαρμακείο τώρα|poufarmakas/i.test(el.textContent||''))el.textContent='PouFarmaka'});if(!document.getElementById('pf-brand')){const d=document.createElement('div');d.id='pf-brand';d.innerHTML='<div class="name">PouFarmaka</div><div class="tag">PHARMACY NIGHT SERVICES</div>';document.body.appendChild(d)}};new MutationObserver(rename).observe(document.documentElement,{childList:true,subtree:true});addEventListener('DOMContentLoaded',rename);setTimeout(rename,800)})();
+(()=>{const rename=()=>{document.title='PouFarmaka · Miami Nights';document.querySelectorAll('h1,h2,h3,[class*="brand"],[class*="logo"]').forEach(el=>{if(/φαρμακείο τώρα|poufarmakas|poufarmaka/i.test(el.textContent||'')){if(el.matches('.brand')||el.querySelector('.brand-name-accent'))el.innerHTML='<span class="brand-icon"></span><span><b>Pou<span class="brand-name-accent">Farmaka</span></b></span>';else el.textContent='PouFarmaka'}});if(!document.getElementById('pf-brand')){const d=document.createElement('div');d.id='pf-brand';d.innerHTML='<div class="name">PouFarmaka</div><div class="tag">PHARMACY NIGHT SERVICES</div>';document.body.appendChild(d)}};new MutationObserver(rename).observe(document.documentElement,{childList:true,subtree:true});addEventListener('DOMContentLoaded',rename);setTimeout(rename,800)})();
 </script>`;
 
 function rewriteHtml(html){
-  let out=html.replace(/<title>[\s\S]*?<\/title>/i,'<title>PouFarmaka · Miami Nights</title>');
+  let out=html.replace(/<title>[\s\S]*?<\/title>/i,'<title>PouFarmaka · Miami Nights</title>');\n  out=out.replace(/PouFarmakas/g,'PouFarmaka');
   out=out.replace(/<meta\s+name=["']theme-color["'][^>]*>/i,'<meta name="theme-color" content="#03050b">');
   if(!/<base\b/i.test(out)) out=out.replace(/<head([^>]*)>/i,'<head$1><base href="/">');
   return out.replace(/<\/head>/i,NIGHT_CSS+'</head>');
