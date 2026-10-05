@@ -53,18 +53,14 @@ a{color:#8ff7ee!important}
 table,tbody,tr,td,th{background-color:transparent!important;color:#fff!important;border-color:rgba(255,255,255,.08)!important}
 [class*="result"],[class*="Result"],li{color:#fff!important}
 [class*="muted"],[class*="secondary"],[class*="Secondary"]{color:var(--pf-muted)!important}
-#pf-brand{position:fixed;z-index:2147482000;left:14px;top:max(12px,env(safe-area-inset-top));pointer-events:none}
-#pf-brand .name{font:400 clamp(34px,8vw,56px)/.82 "Anton",sans-serif;font-style:italic;color:#aafff7;text-shadow:3px 3px 0 var(--pf-pink),6px 6px 0 rgba(0,0,0,.36),0 0 20px rgba(89,216,208,.45)}
-#pf-brand .tag{font:700 11px/1 "Fira Sans Condensed",sans-serif;letter-spacing:.18em;color:#ff8fbe;margin-top:8px}
 @media(max-width:700px){body{font-size:17px!important}button,[role="button"]{font-size:16px!important;min-height:46px!important}input,select,textarea{font-size:16px!important}}
 </style>
 <script>
-(()=>{const rename=()=>{document.title='PouFarmaka · Miami Nights';document.querySelectorAll('.brand b').forEach(el=>{el.innerHTML='Pou<span class="brand-name-accent">Farmaka</span>'});document.querySelectorAll('h1,h2,h3,[class*="logo"]').forEach(el=>{if(/φαρμακείο τώρα|poufarmakas|poufarmaka/i.test(el.textContent||''))el.textContent='PouFarmaka'});if(!document.getElementById('pf-brand')){const d=document.createElement('div');d.id='pf-brand';d.innerHTML='<div class="name">PouFarmaka</div><div class="tag">PHARMACY NIGHT SERVICES</div>';document.body.appendChild(d)}};new MutationObserver(rename).observe(document.documentElement,{childList:true,subtree:true});addEventListener('DOMContentLoaded',rename);setTimeout(rename,800)})();
+(()=>{const rename=()=>{document.title='PouFarmaka · Miami Nights';document.querySelectorAll('.brand b').forEach(el=>{if(el.textContent!=='PouFarmaka')el.innerHTML='Pou<span class="brand-name-accent">Farmaka</span>'});document.querySelectorAll('meta[name="application-name"],meta[name="apple-mobile-web-app-title"]').forEach(el=>el.setAttribute('content','PouFarmaka'))};new MutationObserver(rename).observe(document.documentElement,{childList:true,subtree:true});addEventListener('DOMContentLoaded',rename);setTimeout(rename,800);setTimeout(rename,2500)})();
 </script>`;
 
 function rewriteHtml(html){
   let out=html.replace(/<title>[\s\S]*?<\/title>/i,'<title>PouFarmaka · Miami Nights</title>');
-  out=out.replace(/PouFarmakas/g,'PouFarmaka');
   out=out.replace(/<meta\s+name=["']theme-color["'][^>]*>/i,'<meta name="theme-color" content="#03050b">');
   if(!/<base\b/i.test(out)) out=out.replace(/<head([^>]*)>/i,'<head$1><base href="/">');
   return out.replace(/<\/head>/i,NIGHT_CSS+'</head>');
@@ -89,6 +85,7 @@ app.use(async(req,res)=>{
       res.setHeader(k,v);
     }
     res.setHeader('cache-control','no-store');
+    res.setHeader('permissions-policy','geolocation=(self)');
     if(ct.includes('text/html')){
       const html=await up.text(); return res.type('html').send(rewriteHtml(html));
     }
