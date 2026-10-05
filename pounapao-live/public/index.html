@@ -1,6 +1,156 @@
-<!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#070914"><meta name="apple-mobile-web-app-capable" content="yes"><title>PouNaPao</title><style>
+<!doctype html><html lang="el"><head><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:wght@400;500;600;700;800&family=Fira+Sans+Condensed:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#03050b"><meta name="apple-mobile-web-app-capable" content="yes"><title>pounapao · Miami Nights</title><style>
 :root{--bg:#070914;--pink:#ff168c;--orange:#ff9c32;--mint:#76f3d4;--cyan:#5edfff;--muted:#cfd4e2;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif}*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:#fff}body{overflow:hidden}button,input,a{font:inherit}a{color:inherit;text-decoration:none}button{cursor:pointer}#feed{height:100svh;overflow:auto;scroll-snap-type:y mandatory;scroll-behavior:smooth}.slide{min-height:100svh;position:relative;scroll-snap-align:start;scroll-snap-stop:always;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;background:#070914}.hero{justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 18px) 16px calc(env(safe-area-inset-bottom,0px) + 18px);background:radial-gradient(circle at 70% 24%,#682174,#070914 64%)}.brand{font-size:clamp(48px,14vw,72px);font-weight:1000;letter-spacing:-.07em;line-height:.85}.brand span{background:linear-gradient(90deg,var(--pink),var(--orange));-webkit-background-clip:text;background-clip:text;color:transparent}.hero h1{font-size:clamp(44px,12vw,68px);line-height:.9;letter-spacing:-.055em;margin:22px 0 10px;max-width:7ch}.hero p{font-size:18px;line-height:1.4;color:#f3f4f8;max-width:34ch}.panel{padding:13px;border-radius:26px;background:#0c1022e8;border:1px solid #ffffff28;backdrop-filter:blur(20px)}.radiusHead{display:flex;justify-content:space-between;align-items:end}.label{font-size:10px;font-weight:950;letter-spacing:.15em;opacity:.75}.rv{font-size:29px;font-weight:1000}.range{width:100%;accent-color:#ff3480;margin:10px 0 12px}.main,.sec{width:100%;border:0;border-radius:18px;font-weight:950}.main{min-height:60px;background:linear-gradient(90deg,var(--pink),#ff4b62,var(--orange));color:#fff;font-size:18px}.sec{min-height:48px;margin-top:8px;background:#ffffff12;color:#fff;border:1px solid #ffffff25}.status{font-size:12px;color:var(--muted);line-height:1.4;margin-top:9px}.top{position:fixed;z-index:35;left:0;right:0;top:0;display:flex;gap:7px;overflow:auto;padding:calc(env(safe-area-inset-top,0px) + 8px) 9px 18px;background:linear-gradient(#070914f8,#070914b8,transparent);scrollbar-width:none}.top.hide{display:none}.chip{white-space:nowrap;border:1px solid #ffffff2e;background:#ffffff14;color:#fff;padding:9px 13px;border-radius:999px;font-weight:850}.chip.on{background:#fff;color:#070914}.chip.summary{background:linear-gradient(90deg,#ff168c22,#ff9c3222);border-color:#ff5d914f}.progressDock{position:fixed;z-index:34;left:10px;right:10px;top:calc(env(safe-area-inset-top,0px) + 58px);padding:10px 12px 9px;border-radius:17px;background:#0b1020ea;border:1px solid #ffffff27;backdrop-filter:blur(18px);box-shadow:0 12px 32px #0008;transition:.22s ease}.progressDock.hide{opacity:0;pointer-events:none;transform:translateY(-8px)}.progressMeta{display:flex;justify-content:space-between;align-items:baseline;gap:12px;color:#fff}.progressCount{font-size:14px;font-weight:950;color:#fff}.progressPct{font-size:18px;font-weight:1000;color:#fff}.progressTrack{height:7px;margin-top:7px;border-radius:999px;background:#ffffff26;overflow:hidden}.progressFill{height:100%;width:0;background:linear-gradient(90deg,var(--pink),#ff5361,var(--orange));border-radius:999px;transition:width .28s ease}.progressStage{font-size:11px;color:#eef1f7;margin-top:6px;font-weight:750}.bg,.media,.shade{position:absolute;inset:0;width:100%;height:100%}.bg{background:radial-gradient(circle,#562064,#070914 65%);background-size:cover;background-position:center}.media{object-fit:cover}.shade{background:linear-gradient(#0001,#0006 34%,#070914e8 70%,#070914)}.content{position:relative;z-index:2;padding:108px 12px calc(env(safe-area-inset-bottom,0px) + 12px);display:grid;gap:8px}.badges{display:flex;gap:6px;flex-wrap:wrap}.badge{padding:7px 9px;border-radius:999px;background:#ffffff1d;border:1px solid #ffffff25;font-size:12px;font-weight:900;backdrop-filter:blur(12px)}.hot{background:linear-gradient(90deg,var(--pink),var(--orange));border:0}.ongoing{background:#26d07c22;border-color:#26d07c77;color:#b9f7d7}.eventHead{padding:1px 0 2px 11px;border-left:4px solid var(--pink);filter:drop-shadow(0 4px 16px #0006)}.eventKicker{display:block;font-size:10px;font-weight:950;letter-spacing:.18em;color:#ffb260;margin-bottom:4px}.eventTitle{font-family:Inter,system-ui,-apple-system,"SF Pro Display",sans-serif;font-size:clamp(29px,8.1vw,41px);line-height:.98;letter-spacing:-.045em;font-weight:1000;color:#fff;margin:0;text-shadow:0 4px 20px #0009}.acts{font-size:15px;font-weight:850;color:#f0f2f6}.ww{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:8px}.card{min-height:110px;border-radius:20px;padding:11px;display:flex;flex-direction:column;justify-content:space-between;min-width:0;overflow:hidden;backdrop-filter:blur(18px);box-shadow:inset 0 0 0 1px #ffffff24}.where{background:linear-gradient(145deg,#063e4aed,#0a2337e8);box-shadow:0 14px 30px #001c2780,inset 0 0 0 1px #63f4d72f}.where .label{color:#9ff9e4;opacity:.95}.venue{font-family:ui-rounded,"Arial Rounded MT Bold","SF Pro Rounded",system-ui,sans-serif;font-size:clamp(23px,6.5vw,34px);line-height:.96;font-weight:900;letter-spacing:-.025em;color:var(--mint);overflow-wrap:anywhere;text-shadow:0 2px 16px #001}.where .sub{color:#d6fff4}.when{background:linear-gradient(145deg,#ff168cf1,#ff8b31f1);box-shadow:0 14px 32px #ff247538}.rel{font-size:clamp(24px,7.3vw,39px);line-height:.9;font-weight:1000;letter-spacing:-.045em}.dateRow{display:grid;gap:2px;margin-top:6px}.date{font-size:15px;font-weight:950;line-height:1}.clock{font-size:21px;font-weight:1000;line-height:1}.sub{font-size:12px;line-height:1.22;font-weight:800;opacity:.86;margin-top:6px}.desc{font-size:13px;line-height:1.35;color:#e4e7f1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.cta{min-height:44px;border-radius:15px;display:flex;align-items:center;justify-content:center;background:#fff;color:#070914;font-weight:950}.cta.alt{background:#ffffff14;color:#fff;border:1px solid #ffffff25}.empty{justify-content:center;align-items:center;padding:22px;text-align:center}.empty h2{font-size:34px}.empty p{color:#cfd4e2}.spinner{display:inline-block;width:15px;height:15px;border:2px solid #fff6;border-top-color:#fff;border-radius:50%;animation:s .7s linear infinite;margin-right:7px;vertical-align:-2px}@keyframes s{to{transform:rotate(360deg)}}@media(max-width:430px){.progressDock{top:calc(env(safe-area-inset-top,0px) + 55px);left:8px;right:8px}.content{padding:105px 10px calc(env(safe-area-inset-bottom,0px) + 10px);gap:6px}.ww{grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:7px}.card{min-height:104px;padding:10px;border-radius:18px}.venue{font-size:clamp(21px,6vw,30px)}.rel{font-size:clamp(22px,6.8vw,34px)}.date{font-size:14px}.clock{font-size:20px}.eventTitle{font-size:clamp(26px,7.2vw,35px)}}
-</style></head><body><nav id="filters" class="top hide"></nav><div id="progressDock" class="progressDock hide"><div class="progressMeta"><strong id="progressCount" class="progressCount">0 αποτελέσματα</strong><span id="progressPct" class="progressPct">0%</span></div><div class="progressTrack"><div id="progressFill" class="progressFill"></div></div><div id="progressStage" class="progressStage">Ξεκινά η αναζήτηση…</div></div><main id="feed"><section class="slide hero"><div><div class="brand">Pou<span>Na</span>Pao</div><h1>Τι παίζει κοντά σου;</h1><p>Τα πρώτα αποτελέσματα εμφανίζονται αμέσως μόλις βρεθούν. Η αναζήτηση συνεχίζει στο παρασκήνιο για events, social και φαγητό.</p></div><div class="panel"><div class="radiusHead"><span class="label">ΑΚΤΙΝΑ ΑΝΑΖΗΤΗΣΗΣ</span><strong id="rv" class="rv">20 km</strong></div><input id="radius" class="range" type="range" min="5" max="80" step="5" value="20"><button id="search" class="main">📍 Βρες τι γίνεται γύρω μου</button><button id="manual" class="sec">⌕ Αναζήτηση περιοχής</button><div id="status" class="status">Η αναζήτηση έχει ανώτατο χρόνο λίγων δευτερολέπτων και δεν θα μένει πια σε αόριστο loading.</div></div></section></main><script>
+
+/* POUPAME NIGHT VISUAL SYSTEM — POUNAPAO */
+:root{
+  --bg:#03050b!important;
+  --pink:#ff6fae!important;
+  --orange:#ffad8e!important;
+  --mint:#9be7df!important;
+  --cyan:#59d8d0!important;
+  --violet:#7863d8!important;
+  --night:#070b18;
+  --night2:#111a36;
+  --cream:#fff7f2;
+  --muted:#b7bdd0!important;
+}
+html,body{background:#03050b!important;color:#fff!important;font-family:"DM Sans",system-ui,sans-serif!important}
+body:before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:9998;opacity:.09;
+  background:
+    radial-gradient(circle at 12% 18%,rgba(255,255,255,.8) 0 1px,transparent 1.2px),
+    radial-gradient(circle at 72% 22%,rgba(255,255,255,.6) 0 1px,transparent 1.2px),
+    radial-gradient(circle at 44% 11%,rgba(255,255,255,.5) 0 1px,transparent 1.2px),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.06) 0 1px,transparent 1px 5px);
+  background-size:220px 180px,260px 220px,300px 250px,auto;
+  mix-blend-mode:screen;
+}
+body:after{
+  content:"";position:fixed;left:0;right:0;height:16%;top:-20%;z-index:9997;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(255,255,255,.11),transparent);
+  filter:blur(2px);animation:pnpTracking 5.4s linear infinite;
+}
+@keyframes pnpTracking{to{top:115%}}
+
+.slide{background:#03050b!important}
+.hero{
+  position:relative;
+  background:
+    radial-gradient(260px 240px at 78% 22%,rgba(255,111,174,.22),transparent 62%),
+    linear-gradient(180deg,#07102b 0%,#10163c 48%,#351a50 72%,#8a365f 100%)!important;
+  overflow:hidden;
+}
+.hero:before{
+  content:"";position:absolute;width:260px;height:260px;border-radius:50%;right:-28px;top:13%;
+  background:linear-gradient(180deg,#ffd3a0 0 20%,#ffb08f 20% 38%,#ff7fac 38% 56%,#ed55af 56% 74%,#8d54c9 74%);
+  mask-image:repeating-linear-gradient(180deg,#000 0 11px,transparent 11px 17px);
+  filter:drop-shadow(0 0 32px rgba(255,111,174,.42));
+  opacity:.92;animation:pnpSun 3.8s ease-in-out infinite;
+}
+.hero:after{
+  content:"";position:absolute;left:-12%;right:-12%;bottom:-90px;height:190px;
+  background-image:linear-gradient(rgba(89,216,208,.22) 1px,transparent 1px),linear-gradient(90deg,rgba(255,111,174,.23) 1px,transparent 1px);
+  background-size:28px 22px;
+  transform:perspective(260px) rotateX(63deg);transform-origin:center bottom;
+  opacity:.48;animation:pnpGrid 2.4s linear infinite;
+}
+@keyframes pnpSun{50%{transform:scale(1.08)}}
+@keyframes pnpGrid{to{background-position:0 44px,56px 0}}
+
+.brand{
+  position:relative;z-index:3;
+  font:400 clamp(64px,17vw,92px)/.82 "Anton",sans-serif!important;
+  font-style:italic!important;letter-spacing:.005em!important;
+  color:#aafff7!important;
+  text-shadow:4px 4px 0 var(--pink),8px 8px 0 rgba(0,0,0,.36),0 0 24px rgba(89,216,208,.55)!important;
+  transform:skewX(-6deg);animation:pnpBrandFloat 3s ease-in-out infinite,pnpBrandGlitch 6.4s steps(2,end) infinite;
+}
+.brand span{background:none!important;color:#ff8fbe!important;-webkit-text-fill-color:#ff8fbe!important}
+@keyframes pnpBrandFloat{50%{transform:skewX(-6deg) translateY(-5px)}}
+@keyframes pnpBrandGlitch{0%,94%,100%{filter:none}95%{filter:drop-shadow(-4px 0 #00efff) drop-shadow(4px 0 #ff3f99)}96%{filter:drop-shadow(3px 0 #00efff) drop-shadow(-3px 0 #ff3f99)}}
+
+.hero h1{
+  position:relative;z-index:3;
+  font:400 clamp(50px,13vw,78px)/.88 "Anton",sans-serif!important;
+  font-style:italic!important;letter-spacing:.005em!important;
+  color:#fff5fa!important;text-shadow:3px 3px 0 rgba(255,111,174,.55),0 0 24px rgba(89,216,208,.24)!important;
+  max-width:9ch!important;
+}
+.hero p{position:relative;z-index:3;font-size:19px!important;line-height:1.38!important;color:#fff3fb!important;max-width:31ch!important}
+.panel{
+  position:relative;z-index:4;
+  border-radius:3px 18px 3px 18px!important;
+  background:linear-gradient(180deg,rgba(7,11,24,.93),rgba(12,14,34,.95))!important;
+  border:1px solid rgba(255,255,255,.14)!important;
+  box-shadow:7px 7px 0 rgba(255,111,174,.20),-5px -5px 0 rgba(89,216,208,.12),0 18px 48px #0008!important;
+}
+.label{font-family:"Fira Sans Condensed",sans-serif!important;font-style:italic!important;letter-spacing:.16em!important}
+.rv{font:400 36px/1 "Anton",sans-serif!important;font-style:italic!important;color:#aafff7!important;text-shadow:2px 2px 0 #ff6fae!important}
+.main{
+  border-radius:2px 13px 2px 13px!important;background:var(--cyan)!important;color:#08101d!important;
+  box-shadow:5px 5px 0 var(--pink)!important;font-size:19px!important;text-transform:uppercase!important;letter-spacing:.04em!important
+}
+.sec{border-radius:2px 13px 2px 13px!important;background:#0e1530!important;border-color:rgba(255,255,255,.15)!important;color:#fff!important}
+
+.top{
+  background:linear-gradient(#03050bf8,#03050bd8,transparent)!important;
+}
+.chip{
+  border-radius:2px 10px 2px 10px!important;background:#0d1430!important;border-color:rgba(255,255,255,.13)!important;
+  box-shadow:2px 2px 0 rgba(255,111,174,.15)!important
+}
+.chip.on{background:var(--cyan)!important;color:#08101d!important;box-shadow:3px 3px 0 var(--pink)!important}
+.progressDock{
+  border-radius:2px 14px 2px 14px!important;background:rgba(5,9,22,.95)!important;border-color:rgba(255,255,255,.13)!important;
+  box-shadow:6px 6px 0 rgba(255,111,174,.16),0 14px 36px #000a!important
+}
+.progressFill{background:linear-gradient(90deg,var(--cyan),var(--pink),var(--orange))!important}
+
+.slide:not(.hero){background:#03050b!important}
+.bg{background:radial-gradient(circle at 70% 24%,#25153d,#03050b 65%)!important}
+.shade{background:linear-gradient(#0002,#0008 34%,rgba(3,5,11,.88) 70%,#03050b)!important}
+.content{gap:10px!important}
+.eventHead{
+  border-left:5px solid var(--cyan)!important;padding-left:13px!important;
+  filter:drop-shadow(0 8px 20px #0009)!important;
+}
+.eventKicker{font-family:"Fira Sans Condensed",sans-serif!important;color:#ff9dc5!important;letter-spacing:.19em!important}
+.eventTitle{
+  font:400 clamp(34px,9vw,50px)/.92 "Anton",sans-serif!important;
+  font-style:italic!important;letter-spacing:.005em!important;
+  text-shadow:3px 3px 0 rgba(255,111,174,.42),0 6px 22px #000b!important
+}
+.badge{
+  border-radius:2px 9px 2px 9px!important;background:rgba(10,15,34,.82)!important;border-color:rgba(255,255,255,.13)!important
+}
+.hot{background:linear-gradient(90deg,var(--pink),#ec5fa5,var(--orange))!important}
+.ongoing{background:rgba(89,216,208,.12)!important;border-color:rgba(89,216,208,.48)!important;color:#b9fff7!important}
+.card{
+  border-radius:2px 16px 2px 16px!important;
+  border:1px solid rgba(255,255,255,.10)!important;
+  box-shadow:6px 6px 0 rgba(255,111,174,.10),0 16px 34px #0008,inset 0 0 0 1px rgba(255,255,255,.04)!important;
+}
+.where{background:linear-gradient(145deg,#071f2bef,#0b1730ed)!important}
+.where .label{color:#a8fff6!important}.venue{
+  font:400 clamp(28px,7.3vw,39px)/.92 "Anton",sans-serif!important;font-style:italic!important;
+  color:#9ffbf3!important;text-shadow:2px 2px 0 rgba(255,111,174,.34),0 0 18px rgba(89,216,208,.25)!important
+}
+.when{background:linear-gradient(145deg,#6d2358f3,#ec579bf3 52%,#ff9d79f1)!important}
+.rel{font:400 clamp(30px,8vw,45px)/.88 "Anton",sans-serif!important;font-style:italic!important;text-shadow:2px 2px 0 #111936!important}
+.clock{font-size:25px!important}
+.cta{border-radius:2px 12px 2px 12px!important;background:var(--cyan)!important;color:#07101d!important;box-shadow:4px 4px 0 var(--pink)!important}
+.cta.alt{background:#0c1330!important;color:#fff!important;border-color:rgba(255,255,255,.13)!important;box-shadow:none!important}
+
+@media(max-width:430px){
+  .brand{font-size:64px!important}
+  .hero h1{font-size:50px!important}
+  .hero p{font-size:17px!important}
+  .eventTitle{font-size:36px!important}
+  .venue{font-size:29px!important}
+  .rel{font-size:32px!important}
+}
+
+</style></head><body><nav id="filters" class="top hide"></nav><div id="progressDock" class="progressDock hide"><div class="progressMeta"><strong id="progressCount" class="progressCount">0 αποτελέσματα</strong><span id="progressPct" class="progressPct">0%</span></div><div class="progressTrack"><div id="progressFill" class="progressFill"></div></div><div id="progressStage" class="progressStage">Ξεκινά η αναζήτηση…</div></div><main id="feed"><section class="slide hero"><div><div class="brand">pouna<span>pao</span></div><h1>Τι παίζει κοντά σου;</h1><p>Τα πρώτα αποτελέσματα εμφανίζονται αμέσως μόλις βρεθούν. Η αναζήτηση συνεχίζει στο παρασκήνιο για events, social και φαγητό.</p></div><div class="panel"><div class="radiusHead"><span class="label">ΑΚΤΙΝΑ ΑΝΑΖΗΤΗΣΗΣ</span><strong id="rv" class="rv">20 km</strong></div><input id="radius" class="range" type="range" min="5" max="80" step="5" value="20"><button id="search" class="main">📍 Βρες τι γίνεται γύρω μου</button><button id="manual" class="sec">⌕ Αναζήτηση περιοχής</button><div id="status" class="status">Η αναζήτηση έχει ανώτατο χρόνο λίγων δευτερολέπτων και δεν θα μένει πια σε αόριστο loading.</div></div></section></main><script>
 const $=s=>document.querySelector(s),feed=$('#feed'),filters=$('#filters'),statusEl=$('#status'),radius=$('#radius'),rv=$('#rv'),search=$('#search'),manual=$('#manual'),progressDock=$('#progressDock'),progressCount=$('#progressCount'),progressPct=$('#progressPct'),progressFill=$('#progressFill'),progressStage=$('#progressStage');
 const F=[['night','🔥 Έξοδος'],['party','🎉 Party/DJ'],['live','🎤 Live'],['food','🍽️ Φαγητό'],['social','◎ Social'],['all','Όλα']];
 const LANES=[['fast','Άμεσες πηγές'],['events','Events & venues'],['social','Social media'],['food','Φαγητό & live']];
