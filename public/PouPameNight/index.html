@@ -658,6 +658,76 @@ body:before{
 .game-card{background:#050812!important}
 .game-shell{background:linear-gradient(180deg,#080d20,#101535 55%,#2b183d)!important}
 
+
+/* READABILITY + MANUAL FINAL AMOUNT — BUILD 80.7 */
+.btn{
+  color:#ffffff!important;
+  text-shadow:0 1px 0 rgba(0,0,0,.55)!important;
+  font-weight:800!important;
+}
+.btn.secondary{
+  color:#f7fbff!important;
+  background:#121a33!important;
+  border-color:rgba(143,231,223,.30)!important;
+  box-shadow:3px 3px 0 rgba(255,111,174,.22)!important;
+}
+.btn.aqua{
+  color:#06111c!important;
+  background:#68e5db!important;
+  text-shadow:none!important;
+}
+.btn.pink{
+  color:#ffffff!important;
+  background:#e8589c!important;
+}
+.btn.danger{
+  color:#ffd6dd!important;
+  background:#3a1320!important;
+  border-color:rgba(255,111,120,.38)!important;
+}
+.btn:after{opacity:.20!important;pointer-events:none!important}
+.btn.secondary:after,.btn.danger:after{display:none!important}
+.entry-actions .btn{
+  min-height:34px!important;
+  padding:8px 12px!important;
+  font-size:9px!important;
+  letter-spacing:.06em!important;
+}
+.finalbox{
+  margin-top:10px;
+  padding:11px;
+  border:1px solid rgba(89,216,208,.22);
+  border-radius:2px 12px 2px 12px;
+  background:linear-gradient(135deg,rgba(89,216,208,.08),rgba(255,111,174,.07));
+  box-shadow:3px 3px 0 rgba(255,111,174,.10);
+}
+.finalbox .finaltitle{
+  font:700 italic 10px/1 "Fira Sans Condensed",sans-serif;
+  letter-spacing:.12em;
+  color:#9ff8ef;
+  text-transform:uppercase;
+  margin-bottom:7px;
+}
+.finalrow{display:grid;grid-template-columns:1fr auto auto;gap:7px;align-items:center}
+.finalrow input{
+  min-width:0;
+  background:#050915!important;
+  color:#fff!important;
+  font-size:14px!important;
+  font-weight:800!important;
+  border:1px solid rgba(89,216,208,.30)!important;
+}
+.manualmark{
+  display:inline-block;margin-left:5px;padding:2px 5px;border-radius:999px;
+  background:rgba(255,111,174,.16);color:#ff9fc7;font-size:7px;font-weight:800;letter-spacing:.08em
+}
+@media(max-width:700px){
+  .btn{font-size:10px!important}
+  .btn.small{font-size:9px!important}
+  .finalrow{grid-template-columns:1fr 1fr}
+  .finalrow input{grid-column:1/-1}
+}
+
 </style>
 </head>
 <body><div class="vhs-overlay" aria-hidden="true"></div><div class="vhs-flash" aria-hidden="true"></div>
@@ -821,7 +891,12 @@ function isExtra(e){return e.type!=='routine'}
 function entryAmount(e){var n=Number(e.amount);return isFinite(n)&&n>=0?n:0}
 function groups(){
   var m={};(D.entries||[]).forEach(function(e){(m[e.date]||(m[e.date]=[])).push(e)});
-  return Object.keys(m).sort().reverse().map(function(d){var es=m[d],extras=es.reduce(function(s,e){return s+(isExtra(e)?entryAmount(e):0)},0);return {d:d,e:es,t:dailyRate()+extras,extras:extras}})
+  var ov=(D&&D.dayOverrides)||{};
+  return Object.keys(m).sort().reverse().map(function(d){
+    var es=m[d],extras=es.reduce(function(s,e){return s+(isExtra(e)?entryAmount(e):0)},0),auto=dailyRate()+extras;
+    var has=Object.prototype.hasOwnProperty.call(ov,d)&&ov[d]!==null&&ov[d]!==''&&!isNaN(Number(ov[d]));
+    return {d:d,e:es,auto:auto,t:has?Number(ov[d]):auto,extras:extras,manual:has};
+  })
 }
 function animateMoney(el,n){n=Number(n||0);if(!el)return;var from=Number(el.dataset.value||0),start=performance.now(),dur=380;el.dataset.value=n;function tick(t){var p=Math.min(1,(t-start)/dur),e=1-Math.pow(1-p,3);el.textContent=euro(from+(n-from)*e);if(p<1)requestAnimationFrame(tick)}requestAnimationFrame(tick)}
 
@@ -830,8 +905,16 @@ function entryChip(e){
   return '<span class="tag">'+label+dest+amt+'</span>';
 }
 function rowHtml(g){
-  var entries=g.e.map(function(e){return '<div>'+entryChip(e)+'<div class="entry-actions"><button class="btn secondary small" data-eid="'+esc(e.id)+'" onclick="openEdit(this.dataset.eid)">Επεξεργασία</button></div></div>'}).join('');
-  return '<div class="row"><div class="rowtop"><div><h4>'+esc(g.d)+'</h4><div class="meta">Ημερήσια βάση '+euro(dailyRate())+' • έκτακτα '+euro(g.extras)+'</div></div><div class="money">'+euro(g.t)+'</div></div>'+entries+'</div>'
+  var entries=g.e.map(function(e){
+    var label=isExtra(e)?'Έκτακτο':'Ημέρα';
+    var details=(e.start||e.end)?' • '+esc(e.start||'—')+'–'+esc(e.end||'—'):'';
+    var amount=isExtra(e)?' • '+(entryAmount(e)?euro(entryAmount(e)):'χωρίς ποσό'):'';
+    return '<div class="entryblock"><span class="tag">'+label+(e.dest?' • '+esc(e.dest):'')+details+amount+'</span><div class="entry-actions"><button type="button" class="btn secondary small" data-eid="'+esc(e.id||'')+'" onclick="openEdit(this.dataset.eid)">EDIT / ΕΠΕΞΕΡΓΑΣΙΑ</button></div></div>';
+  }).join('');
+  var manual=role==='parent'
+    ?'<div class="finalbox"><div class="finaltitle">FINAL POUPIGES'+(g.manual?'<span class="manualmark">MANUAL</span>':'')+'</div><div class="finalrow"><input type="number" min="0" step=".5" value="'+(g.manual?esc(g.t):'')+'" placeholder="Αυτόματο '+esc(g.auto)+' €" data-day="'+esc(g.d)+'"><button type="button" class="btn aqua small" onclick="saveFinalFromButton(this)">SAVE FINAL</button>'+(g.manual?'<button type="button" class="btn secondary small" data-day="'+esc(g.d)+'" onclick="clearFinalAmount(this.dataset.day)">AUTO</button>':'')+'</div></div>'
+    :'';
+  return '<div class="row"><div class="rowtop"><div><h4>'+esc(g.d)+'</h4><div class="meta">Βάση '+euro(dailyRate())+' • έκτακτα '+euro(g.extras)+(g.manual?' • τελικό χειροκίνητο':'')+'</div></div><div class="money">'+euro(g.t)+'</div></div>'+entries+manual+'</div>'
 }
 
 function renderRates(){
@@ -841,7 +924,7 @@ function renderRates(){
     :'<div class="ratebox"><div class="rate"><b>'+euro(r)+'</b><span>Τρέχουσα ημερήσια βάση.</span></div><div class="rate"><b>Manual</b><span>Τα έκτακτα ορίζονται από θείο ή ανιψιό.</span></div></div>';
 }
 function render(){
-  if(!D)return;D.entries=D.entries||[];D.payments=D.payments||[];
+  if(!D)return;D.entries=D.entries||[];D.payments=D.payments||[];D.dayOverrides=D.dayOverrides||{};D.entries.forEach(function(e){if(!e.id)e.id=id()});
   var gs=groups(),td=gs.find(function(x){return x.d===day()}),ym=day().slice(0,7),mg=gs.filter(function(x){return x.d.indexOf(ym)===0});
   var total=gs.reduce(function(s,x){return s+x.t},0),paid=D.payments.reduce(function(s,x){return s+Number(x.amount||0)},0);
   animateMoney(q('#stoday'),td?td.t:0);q('#stoday2').textContent=td?td.e.length+' καταγραφές':'Καμία καταγραφή';
@@ -866,9 +949,19 @@ function preview(){var e=draft(),n=isExtra(e)?entryAmount(e):0;q('#prev').textCo
 async function saveEntry(){var e=Object.assign({id:id(),date:q('#date').value||day(),createdAt:new Date().toISOString(),by:role},draft());try{await change(function(x){x.entries=x.entries||[];x.entries.push(e)});toast('Αποθηκεύτηκε');reset();go('home')}catch(z){toast('Δεν αποθηκεύτηκε')}}
 
 function openEdit(eid){
-  var e=(D.entries||[]).find(function(x){return x.id===eid});if(!e)return;
-  q('#editId').value=e.id;q('#editDate').value=e.date||day();q('#editType').value=e.type||'routine';q('#editStart').value=e.start||'';q('#editEnd').value=e.end||'';q('#editDest').value=e.dest||'';q('#editAmount').value=e.amount==null?'':e.amount;q('#editNotes').value=e.notes||'';
-  toggleEditAmount();q('#editModal').classList.remove('hide');
+  var entries=D.entries||[],e=entries.find(function(x){return String(x.id||'')===String(eid||'')});
+  if(!e){toast('Δεν βρέθηκε η καταχώριση');return}
+  q('#editId').value=e.id||'';
+  q('#editDate').value=e.date||day();
+  q('#editType').value=e.type||'routine';
+  q('#editStart').value=e.start||'';
+  q('#editEnd').value=e.end||'';
+  q('#editDest').value=e.dest||'';
+  q('#editAmount').value=e.amount==null?'':e.amount;
+  q('#editNotes').value=e.notes||'';
+  toggleEditAmount();
+  q('#editModal').classList.remove('hide');
+  q('#editModal').style.zIndex='120';
 }
 function closeEdit(){q('#editModal').classList.add('hide')}
 function toggleEditAmount(){q('#editAmountField').classList.toggle('hide',q('#editType').value!=='extra')}
@@ -881,6 +974,25 @@ async function deleteEntry(){
   try{await change(function(x){x.entries=(x.entries||[]).filter(function(z){return z.id!==eid})});closeEdit();toast('Η καταχώριση διαγράφηκε')}catch(e){toast('Δεν διαγράφηκε')}
 }
 q('#editType').addEventListener('change',toggleEditAmount);
+
+async function saveFinalFromButton(btn){
+  if(role!=='parent')return;
+  var box=btn.closest('.finalrow'),inp=box&&box.querySelector('input[data-day]');
+  if(!inp)return;
+  var d=inp.dataset.day,n=Number(String(inp.value).replace(',','.'));
+  if(inp.value.trim()===''||!isFinite(n)||n<0)return toast('Γράψε έγκυρο τελικό ποσό');
+  try{
+    await change(function(x){x.dayOverrides=x.dayOverrides||{};x.dayOverrides[d]=Math.round(n*100)/100});
+    toast('Το τελικό PouPiges έγινε '+euro(n));
+  }catch(e){toast('Δεν αποθηκεύτηκε το τελικό ποσό')}
+}
+async function clearFinalAmount(d){
+  if(role!=='parent')return;
+  try{
+    await change(function(x){x.dayOverrides=x.dayOverrides||{};delete x.dayOverrides[d]});
+    toast('Επανήλθε ο αυτόματος υπολογισμός');
+  }catch(e){toast('Δεν ενημερώθηκε')}
+}
 
 async function saveDailyRate(){if(role!=='parent')return;var n=Number(q('#dailyRateInput').value);if(!isFinite(n)||n<0)return toast('Βάλε έγκυρη ημερήσια τιμή');try{await change(function(x){x.dailyRate=Math.round(n*100)/100});toast('Η ημερήσια βάση έγινε '+euro(n))}catch(e){toast('Δεν αποθηκεύτηκε')}}
 async function addPay(){if(role!=='parent')return;var a=Number(q('#payamt').value||0);if(a<=0)return toast('Βάλε ποσό');try{await change(function(x){x.payments=x.payments||[];x.payments.push({id:id(),amount:a,date:q('#paydate').value||day(),note:q('#paynote').value.trim()})});q('#payamt').value='';q('#paynote').value='';toast('Καταχωρήθηκε')}catch(e){toast('Αποτυχία')}}
@@ -919,7 +1031,7 @@ q('#type').addEventListener('change',function(){toggleAmount();preview()});['sta
 function selectRole(x){selectedRole=x;qa('.rolecard').forEach(function(b){b.classList.toggle('on',b.dataset.role===x)});var lab=q('#pinLabel'),hint=q('#authHint'),btn=q('#loginBtn');if(lab)lab.textContent=x==='parent'?'PIN θείου':'PIN ανιψιού';if(D&&D.auth){var has=!!D.auth[x];if(btn)btn.textContent=has?'Είσοδος':'Ορισμός PIN & είσοδος';if(hint)hint.textContent=has?'Χρειάζεται μόνο το PIN αυτού του ρόλου.':'Το PIN που θα γράψεις τώρα θα γίνει το προσωπικό PIN αυτού του ρόλου.'}}
 async function makeWs(){
   var p=q('#ppin').value.trim();if(!/^\d{4,8}$/.test(p))return toast('Βάλε PIN 4–8 ψηφίων');
-  try{var h=await hash(p),auth={parent:null,driver:null};auth[selectedRole]=h;var init={version:6,auth:auth,dailyRate:15,entries:[],payments:[],createdAt:new Date().toISOString()};uri=await createStore(init);D=init;role=selectedRole;localStorage.setItem('pp.uri',uri);localStorage.setItem('pp.role',role);history.replaceState(null,'',location.pathname+'#w='+code(uri));enter();toast('Ο κοινός χώρος δημιουργήθηκε')}catch(e){toast('Δεν δημιουργήθηκε ο online χώρος')}
+  try{var h=await hash(p),auth={parent:null,driver:null};auth[selectedRole]=h;var init={version:7,auth:auth,dailyRate:15,entries:[],payments:[],dayOverrides:{},createdAt:new Date().toISOString()};uri=await createStore(init);D=init;role=selectedRole;localStorage.setItem('pp.uri',uri);localStorage.setItem('pp.role',role);history.replaceState(null,'',location.pathname+'#w='+code(uri));enter();toast('Ο κοινός χώρος δημιουργήθηκε')}catch(e){toast('Δεν δημιουργήθηκε ο online χώρος')}
 }
 async function doLogin(){
   var p=q('#lpin').value.trim();if(!/^\d{4,8}$/.test(p))return toast('Βάλε PIN 4–8 ψηφίων');
@@ -932,7 +1044,7 @@ async function shareWs(){var u=link();try{if(navigator.share)await navigator.sha
 async function boot(){
   var h=new URLSearchParams(location.hash.replace(/^#/,'')).get('w');uri=(h&&dec(h))||localStorage.getItem('pp.uri')||localStorage.getItem('dr.uri');
   if(!uri){selectRole('parent');return}
-  try{D=await get();D.auth=D.auth||{parent:null,driver:null};D.entries=D.entries||[];D.payments=D.payments||[];localStorage.setItem('pp.cache',JSON.stringify(D));role=localStorage.getItem('pp.role')||localStorage.getItem('dr.role');if((role==='parent'||role==='driver')&&D.auth[role]){selectedRole=role;enter()}else{role=null;q('#create').classList.add('hide');q('#login').classList.remove('hide');selectRole('parent')}}catch(e){toast('Δεν άνοιξε ο κοινός χώρος')}
+  try{D=await get();D.auth=D.auth||{parent:null,driver:null};D.entries=D.entries||[];D.payments=D.payments||[];D.dayOverrides=D.dayOverrides||{};D.entries.forEach(function(e){if(!e.id)e.id=id()});localStorage.setItem('pp.cache',JSON.stringify(D));role=localStorage.getItem('pp.role')||localStorage.getItem('dr.role');if((role==='parent'||role==='driver')&&D.auth[role]){selectedRole=role;enter()}else{role=null;q('#create').classList.add('hide');q('#login').classList.remove('hide');selectRole('parent')}}catch(e){toast('Δεν άνοιξε ο κοινός χώρος')}
 }
 
 /* Mini game */
@@ -961,5 +1073,5 @@ document.addEventListener('keydown',function(e){if(e.key==='ArrowLeft')game.keys
 
 q('#date').value=day();q('#paydate').value=day();boot();
 </script>
-<div style="position:fixed;right:8px;top:6px;z-index:9999;font:700 9px/1 DM Sans,sans-serif;color:#10172f;background:#9be7df;border:1px solid rgba(16,23,47,.15);padding:4px 6px;border-radius:2px 7px 2px 7px;opacity:.9;pointer-events:none">MIAMI BUILD 80.6N · DEEP NIGHT</div></body>
+<div style="position:fixed;right:8px;top:6px;z-index:9999;font:700 9px/1 DM Sans,sans-serif;color:#10172f;background:#9be7df;border:1px solid rgba(16,23,47,.15);padding:4px 6px;border-radius:2px 7px 2px 7px;opacity:.9;pointer-events:none">MIAMI BUILD 80.7 · FIXED</div></body>
 </html>
