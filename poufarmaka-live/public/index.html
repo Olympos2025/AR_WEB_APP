@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#03050b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PouFarmaka">
+<title>PouFarmaka · Night Pharmacy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:wght@400;500;600;700;800&family=Fira+Sans+Condensed:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--bg:#03050b;--panel:#090f22;--panel2:#11183a;--cyan:#59d8d0;--pink:#ff6fae;--peach:#ffad8e;--violet:#7863d8;--text:#fff7fb;--muted:#aeb6ca;--ok:#84f5d5}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#03050b;color:var(--text);font-family:"DM Sans",system-ui,sans-serif}body{overflow-x:hidden;background:radial-gradient(900px 420px at 50% -10%,rgba(120,99,216,.11),transparent 62%),radial-gradient(700px 420px at 100% 0%,rgba(255,111,174,.08),transparent 64%),linear-gradient(180deg,#03050b 0%,#060914 48%,#04060c 100%)}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:9998;opacity:.065;background:radial-gradient(circle at 12% 18%,rgba(255,255,255,.75) 0 1px,transparent 1.15px),radial-gradient(circle at 72% 22%,rgba(255,255,255,.55) 0 1px,transparent 1.15px),radial-gradient(circle at 44% 11%,rgba(255,255,255,.48) 0 1px,transparent 1.15px),repeating-linear-gradient(0deg,rgba(255,255,255,.055) 0 1px,transparent 1px 6px);background-size:220px 180px,260px 220px,300px 250px,auto;mix-blend-mode:screen}
+body:after{content:"";position:fixed;left:0;right:0;height:15%;top:-20%;pointer-events:none;z-index:9997;background:linear-gradient(180deg,transparent,rgba(255,255,255,.10),transparent);animation:track 5.5s linear infinite}@keyframes track{to{top:115%}}
+.app{max-width:780px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 16px) 14px calc(env(safe-area-inset-bottom,0px) + 26px)}
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px}.brand{font:400 clamp(48px,14vw,78px)/.82 "Anton",sans-serif;font-style:italic;letter-spacing:.006em;color:#aafff7;text-shadow:4px 4px 0 var(--pink),8px 8px 0 rgba(0,0,0,.36),0 0 24px rgba(89,216,208,.48);transform:skewX(-5deg)}.brand .mid{color:#ff8fbe}.tag{margin-top:8px;font:700 12px/1 "Fira Sans Condensed",sans-serif;letter-spacing:.17em;color:#ff8fbe}.build{font:700 9px/1.2 "Fira Sans Condensed",sans-serif;letter-spacing:.12em;color:#9aa5bd;text-align:right;padding-top:5px}
+.hero{position:relative;overflow:hidden;padding:18px 16px 16px;border:1px solid rgba(255,255,255,.11);border-radius:3px 20px 3px 20px;background:linear-gradient(160deg,#0a1026 0%,#151a42 50%,#351a50 100%);box-shadow:9px 9px 0 rgba(255,111,174,.16),-6px -6px 0 rgba(89,216,208,.09),0 24px 60px rgba(0,0,0,.45);margin-bottom:16px}.hero:before{content:"";position:absolute;width:190px;height:190px;border-radius:50%;right:-36px;top:-38px;background:linear-gradient(180deg,#ffd0a2,#ff8cad 45%,#8e56c5);mask-image:repeating-linear-gradient(180deg,#000 0 10px,transparent 10px 15px);opacity:.5}.hero h1{position:relative;margin:0 0 8px;font:400 clamp(38px,10vw,58px)/.9 "Anton",sans-serif;font-style:italic;letter-spacing:.01em;text-shadow:3px 3px 0 rgba(255,111,174,.45)}.hero p{position:relative;margin:0;color:#d9ddeb;font-size:15px;line-height:1.45;max-width:34ch}
+.controls{display:grid;grid-template-columns:1fr auto;gap:9px;margin-top:15px;position:relative}.search{width:100%;height:52px;border:1px solid rgba(255,255,255,.13);border-radius:2px 13px 2px 13px;background:#070b17;color:white;padding:0 14px;font-size:16px;outline:none}.search::placeholder{color:#778098}.locbtn{height:52px;border:0;border-radius:2px 13px 2px 13px;padding:0 14px;background:var(--cyan);color:#06101b;font-weight:900;box-shadow:4px 4px 0 var(--pink);white-space:nowrap}.locbtn:disabled{opacity:.55}
+.status{margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:relative}.status strong{font:700 13px "Fira Sans Condensed",sans-serif;letter-spacing:.07em;color:#fff}.status span{font-size:12px;color:var(--muted)}.pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(132,245,213,.5);animation:pulse 1.8s infinite;margin-right:7px}@keyframes pulse{70%{box-shadow:0 0 0 8px rgba(132,245,213,0)}100%{box-shadow:0 0 0 0 rgba(132,245,213,0)}}
+.mapcard{position:relative;height:310px;border-radius:3px 20px 3px 20px;overflow:hidden;border:1px solid rgba(255,255,255,.11);box-shadow:8px 8px 0 rgba(89,216,208,.12),0 18px 45px rgba(0,0,0,.4);margin-bottom:17px}.map{height:100%;width:100%;background:#07101d}.mapbadge{position:absolute;z-index:500;left:12px;top:12px;padding:9px 11px;border-radius:2px 10px 2px 10px;background:rgba(3,5,11,.86);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.12);font:700 11px "Fira Sans Condensed",sans-serif;letter-spacing:.09em}.mapbadge b{color:#aafff7}
+.sectionhead{display:flex;justify-content:space-between;align-items:end;gap:12px;margin:19px 2px 10px}.sectionhead h2{margin:0;font:400 34px/1 "Anton",sans-serif;font-style:italic;letter-spacing:.01em}.sectionhead .radius{font:700 11px "Fira Sans Condensed",sans-serif;letter-spacing:.12em;color:#ff8fbe}
+.results{display:grid;gap:11px}.card{position:relative;overflow:hidden;padding:15px;border:1px solid rgba(255,255,255,.10);border-radius:3px 17px 3px 17px;background:linear-gradient(150deg,#0a1025,#0b132d 55%,#19132d);box-shadow:6px 6px 0 rgba(255,111,174,.11),0 16px 34px rgba(0,0,0,.32)}.cardtop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.rank{font:400 32px/1 "Anton",sans-serif;font-style:italic;color:#ff8fbe;min-width:30px}.maincopy{flex:1;min-width:0}.name{font:800 18px/1.08 "DM Sans",sans-serif;color:#fff}.addr{font-size:13px;color:#abb3c7;margin-top:6px;line-height:1.35}.distance{font:400 28px/1 "Anton",sans-serif;font-style:italic;color:#aafff7;text-align:right;white-space:nowrap;text-shadow:2px 2px 0 rgba(255,111,174,.35)}.meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}.chip{padding:7px 9px;border-radius:2px 9px 2px 9px;background:#111a36;border:1px solid rgba(255,255,255,.10);font-size:11px;font-weight:800;color:#dce2ef}.chip.open{background:rgba(89,216,208,.12);color:#9ffff4;border-color:rgba(89,216,208,.3)}.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px}.action{min-height:43px;border-radius:2px 11px 2px 11px;display:flex;align-items:center;justify-content:center;text-decoration:none;font-weight:900;font-size:13px;background:var(--cyan);color:#06101b;box-shadow:3px 3px 0 var(--pink)}.action.alt{background:#101833;color:#fff;box-shadow:none;border:1px solid rgba(255,255,255,.11)}
+.empty,.error{padding:24px 18px;border:1px solid rgba(255,255,255,.1);border-radius:3px 17px 3px 17px;background:#090f22;text-align:center;color:#c8cede}.spinner{width:28px;height:28px;border:3px solid rgba(255,255,255,.17);border-top-color:var(--cyan);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}@keyframes spin{to{transform:rotate(360deg)}}.leaflet-control-attribution{background:rgba(3,5,11,.78)!important;color:#adb4c7!important}.leaflet-control-attribution a{color:#8eece4!important}.leaflet-control-zoom a{background:#091020!important;color:white!important;border-color:#1b2646!important}.user-dot{width:18px;height:18px;border-radius:50%;background:#59d8d0;border:3px solid #fff;box-shadow:0 0 0 8px rgba(89,216,208,.18),0 0 22px rgba(89,216,208,.85)}.ph-dot{width:16px;height:16px;transform:rotate(45deg);background:#ff6fae;border:2px solid #fff;box-shadow:0 0 15px rgba(255,111,174,.7)}
+.footer{padding:22px 4px 4px;color:#858fa8;font-size:11px;line-height:1.45;text-align:center}
+@media(max-width:480px){.app{padding-left:11px;padding-right:11px}.top{align-items:flex-start}.brand{font-size:50px}.tag{font-size:10px}.build{font-size:8px}.hero{padding:15px 13px}.hero h1{font-size:40px}.controls{grid-template-columns:1fr}.locbtn{width:100%}.mapcard{height:280px}.sectionhead h2{font-size:30px}.name{font-size:17px}.distance{font-size:25px}.actions{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top"><div><div class="brand">Pou<span class="mid">Farmaka</span></div><div class="tag">PHARMACY NIGHT SERVICES</div></div><div class="build">NIGHT BUILD 1.0<br>LIVE DUTY DATA</div></div>
+  <section class="hero">
+    <h1>Ανοιχτό. Κοντά σου.</h1>
+    <p>Βρίσκει τα εφημερεύοντα φαρμακεία γύρω σου και μεγαλώνει αυτόματα την ακτίνα μόνο αν χρειάζεται.</p>
+    <div class="controls"><input id="searchInput" class="search" placeholder="Αναζήτηση διεύθυνσης ή περιοχής"><button id="locBtn" class="locbtn">◎ Η ΘΕΣΗ ΜΟΥ</button></div>
+    <div class="status"><strong><i class="pulse"></i><span id="statusTitle">ΕΤΟΙΜΟ</span></strong><span id="statusText">Αναμονή θέσης</span></div>
+  </section>
+  <section class="mapcard"><div id="map" class="map"></div><div class="mapbadge">AUTO RADIUS <b id="radiusBadge">5 KM</b></div></section>
+  <div class="sectionhead"><h2>Εφημερεύοντα τώρα</h2><div class="radius" id="countLabel">—</div></div>
+  <section id="results" class="results"><div class="empty"><div class="spinner"></div>Φόρτωση εφαρμογής…</div></section>
+  <div class="footer">Τα προγράμματα εφημεριών μπορεί να αλλάξουν. Κάλεσε το φαρμακείο πριν ξεκινήσεις.</div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+const defaultOrigin={lat:40.632,lng:22.945,label:'Θεσσαλονίκη, κέντρο'};
+let origin={...defaultOrigin}, rows=[], map, userMarker, pharmacyMarkers=[], watchId=null, radius=5, loading=false;
+const hav=(a,b,c,d)=>{const R=6371,r=x=>x*Math.PI/180,dp=r(c-a),dl=r(d-b),q=Math.sin(dp/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.sqrt(q))};
+const cityFor=p=>hav(p.lat,p.lng,37.9838,23.7275)<hav(p.lat,p.lng,40.6401,22.9444)?'athens':'thessaloniki';
+const dateAthens=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Athens',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+const fmtKm=n=>n<1?Math.round(n*1000)+' m':n.toLocaleString('el-GR',{maximumFractionDigits:1})+' km';
+function setStatus(title,text){$('#statusTitle').textContent=title;$('#statusText').textContent=text}
+function initMap(){
+ map=L.map('map',{zoomControl:true,attributionControl:true}).setView([origin.lat,origin.lng],13);
+ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:20,attribution:'© OpenStreetMap © CARTO'}).addTo(map);
+ const userIcon=L.divIcon({className:'',html:'<div class="user-dot"></div>',iconSize:[18,18],iconAnchor:[9,9]});
+ userMarker=L.marker([origin.lat,origin.lng],{icon:userIcon,zIndexOffset:1000}).addTo(map);
+}
+function openNow(row){
+ if(!Array.isArray(row.intervals)||!row.intervals.length)return true;
+ const now=Date.now();
+ return row.intervals.some(x=>now>=Number(x.start)&&now<Number(x.end));
+}
+function usable(row){return row.kind==='pharmacy'&&Number.isFinite(+row.lat)&&Number.isFinite(+row.lng)}
+function chooseRadius(list){
+ const open=list.filter(openNow);
+ for(const r of [5,10,50]) if(open.some(x=>x.km<=r)) return r;
+ return 50;
+}
+function clearMarkers(){pharmacyMarkers.forEach(m=>map.removeLayer(m));pharmacyMarkers=[]}
+function render(){
+ const enriched=rows.filter(usable).map(x=>({...x,km:hav(origin.lat,origin.lng,+x.lat,+x.lng)})).sort((a,b)=>a.km-b.km);
+ radius=chooseRadius(enriched);$('#radiusBadge').textContent=radius+' KM';
+ const visible=enriched.filter(x=>openNow(x)&&x.km<=radius).slice(0,24);
+ $('#countLabel').textContent=visible.length+' ΑΠΟΤΕΛΕΣΜΑΤΑ';
+ clearMarkers();
+ const phIcon=()=>L.divIcon({className:'',html:'<div class="ph-dot"></div>',iconSize:[16,16],iconAnchor:[8,8]});
+ visible.forEach((x,i)=>{const m=L.marker([+x.lat,+x.lng],{icon:phIcon()}).addTo(map).bindPopup('<b>'+escapeHtml(x.name)+'</b><br>'+escapeHtml(x.address||'')+'<br>'+fmtKm(x.km));pharmacyMarkers.push(m)});
+ if(visible.length){const bounds=L.latLngBounds([[origin.lat,origin.lng],...visible.slice(0,10).map(x=>[+x.lat,+x.lng])]);map.fitBounds(bounds,{padding:[32,32],maxZoom:14})}
+ $('#results').innerHTML=visible.length?visible.map((x,i)=>card(x,i)).join(''):'<div class="empty">Δεν βρέθηκε ανοιχτό φαρμακείο έως 50 km για την τρέχουσα ώρα.</div>';
+ setStatus('LIVE',visible.length?'Βρέθηκαν '+visible.length+' ανοιχτά φαρμακεία':'Δεν βρέθηκαν ανοιχτά έως 50 km');
+}
+function escapeHtml(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function card(x,i){
+ const maps='https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(x.lat+','+x.lng);
+ return '<article class="card"><div class="cardtop"><div class="rank">'+(i+1)+'</div><div class="maincopy"><div class="name">'+escapeHtml(x.name)+'</div><div class="addr">'+escapeHtml(x.address||'')+'</div></div><div class="distance">'+fmtKm(x.km)+'</div></div><div class="meta"><span class="chip open">● ΑΝΟΙΧΤΟ ΤΩΡΑ</span><span class="chip">'+escapeHtml(x.hours||'Εφημερία')+'</span></div><div class="actions"><a class="action" href="'+maps+'" target="_blank" rel="noopener">ΔΙΑΔΡΟΜΗ</a>'+(x.phone?'<a class="action alt" href="tel:'+escapeHtml(x.phone)+'">☎ '+escapeHtml(x.phone)+'</a>':'<span class="action alt">Χωρίς τηλέφωνο</span>')+'</div></article>'
+}
+async function loadData(){
+ if(loading)return; loading=true;setStatus('SEARCHING','Αναζήτηση εφημεριών…');$('#results').innerHTML='<div class="empty"><div class="spinner"></div>Αναζήτηση ανοιχτών φαρμακείων…</div>';
+ try{const city=cityFor(origin),u='/api/availability?date='+dateAthens()+'&city='+city;const r=await fetch(u,{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const j=await r.json();rows=Array.isArray(j.rows)?j.rows:[];render()}catch(e){setStatus('ERROR','Η υπηρεσία δεδομένων δεν απάντησε');$('#results').innerHTML='<div class="error">Δεν μπόρεσα να φορτώσω τις εφημερίες. Δοκίμασε ξανά.</div>'}finally{loading=false}
+}
+function setOrigin(p,label){
+ origin={lat:+p.lat,lng:+p.lng,label:label||'Η θέση μου'};userMarker.setLatLng([origin.lat,origin.lng]);map.setView([origin.lat,origin.lng],14);loadData()
+}
+async function geocode(q){
+ const r=await fetch('/api/geocode?q='+encodeURIComponent(q),{cache:'no-store'});if(!r.ok)throw Error('geocode');const j=await r.json();const a=Array.isArray(j)?j[0]:j.items?.[0];if(!a)throw Error('notfound');return {lat:+a.lat,lng:+(a.lng??a.lon),label:a.label||q}
+}
+$('#searchInput').addEventListener('keydown',async e=>{if(e.key!=='Enter')return;const q=e.currentTarget.value.trim();if(!q)return;setStatus('SEARCHING','Εντοπισμός περιοχής…');try{const p=await geocode(q);setOrigin(p,p.label)}catch{setStatus('ERROR','Δεν βρέθηκε η περιοχή')}});
+$('#locBtn').onclick=()=>{
+ if(!navigator.geolocation)return setStatus('ERROR','Ο browser δεν υποστηρίζει τοποθεσία');
+ $('#locBtn').disabled=true;setStatus('GPS','Εντοπισμός θέσης…');
+ navigator.geolocation.getCurrentPosition(p=>{const pos={lat:p.coords.latitude,lng:p.coords.longitude};setOrigin(pos,'Η θέση μου');$('#locBtn').disabled=false;if(watchId!=null)navigator.geolocation.clearWatch(watchId);watchId=navigator.geolocation.watchPosition(w=>{origin.lat=w.coords.latitude;origin.lng=w.coords.longitude;userMarker.setLatLng([origin.lat,origin.lng])},()=>{}, {enableHighAccuracy:true,maximumAge:5000,timeout:15000})},e=>{setStatus('GPS','Δεν δόθηκε πρόσβαση - χρησιμοποιώ Θεσσαλονίκη');$('#locBtn').disabled=false;loadData()},{enableHighAccuracy:true,timeout:12000,maximumAge:30000})
+};
+initMap();loadData();
+</script>
+</body></html>
