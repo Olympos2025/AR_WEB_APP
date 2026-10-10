@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 244 158" fill="none">
+<!-- An original geometric neighbourhood vignette, drawn for Farmakeia. -->
+<circle cx="180" cy="38" r="26" fill="#d6b75e"/>
+<path d="M8 147h228" stroke="#253831" stroke-width="2"/>
+<path d="M20 84h41v63H20z" fill="#ccaa81"/>
+<path d="M17 82h47v5H17z" fill="#8c4c36"/>
+<path d="M28 96h9v17h-9zm17 0h9v17h-9z" fill="#f4f0e5"/>
+<path d="M31 127h20v20H31z" fill="#8c4c36"/>
+<path d="M151 60h55v87h-55z" fill="#a4b2a1"/>
+<path d="M147 58h63v5h-63z" fill="#5c7361"/>
+<path d="M160 72h12v22h-12zm22 0h12v22h-12z" fill="#f4f0e5"/>
+<path d="M159 112h37v35h-37z" fill="#5c7361"/>
+<path d="M70 28h71v119H70z" fill="#e6debc"/>
+<path d="M66 26h80v6H66z" fill="#253831"/>
+<path d="M82 41h17v27H82zm30 0h17v27h-17z" fill="#496952"/>
+<path d="M88 41v27m30-27v27" stroke="#e6debc" stroke-width="2"/>
+<path d="M66 78h80v69H66z" fill="#20543e"/>
+<path d="M72 97h30v43H72z" fill="#8ca88e"/>
+<path d="M111 97h28v50h-28z" fill="#e6debc"/>
+<path d="M115 102h20v31h-20z" fill="#8ca88e"/>
+<path d="M102 78h80v13h-80z" fill="#20543e"/>
+<path d="M166 61h19v28h-19z" fill="#20543e"/>
+<path d="M173 66h5v18h-5z" fill="#f4f0e5"/>
+<path d="M167 72h17v5h-17z" fill="#f4f0e5"/>
+<path d="M75 87h60" stroke="#e6debc" stroke-width="2" stroke-dasharray="4 3"/>
+<path d="M211 126h20l-3 21h-14z" fill="#8c4c36"/>
+<path d="M221 127v-25m0 12c-13-2-15-11-12-14 10-1 13 10 12 14zm1 7c10-1 14-8 12-12-9-2-14 7-12 12z" fill="#496952" stroke="#496952" stroke-width="2"/>
+</svg>

@@ -58,7 +58,7 @@ function displayPosition(p,isDevice){
  userMarker.setLatLng([p.lat,p.lng]);userMarker.getElement()?.querySelector('.user-dot')?.classList.toggle('manual',!isDevice);
  userMarker.setTooltipContent?.(isDevice?'Η θέση μου':p.label);
  if(isDevice&&Number.isFinite(p.accuracy)){
-  if(!accuracyCircle)accuracyCircle=L.circle([p.lat,p.lng],{radius:p.accuracy,color:'#59d8d0',weight:1,fillOpacity:.06,interactive:false}).addTo(map);
+  if(!accuracyCircle)accuracyCircle=L.circle([p.lat,p.lng],{radius:p.accuracy,color:'#e1bc66',weight:1,fillOpacity:.06,interactive:false}).addTo(map);
   else accuracyCircle.setLatLng([p.lat,p.lng]).setRadius(p.accuracy);
  }else if(accuracyCircle){map.removeLayer(accuracyCircle);accuracyCircle=null}
 }
@@ -181,7 +181,7 @@ function selectRow(id,openPopup=true){state.selected=id;state.selectionExplicit=
 function updateSummary(){const r=state.ranked.find(r=>r.id===state.selected)||state.ranked[0];$('#routeSummary').innerHTML=r?'<span class="route-time">'+(r.seconds!==null?Math.max(1,Math.ceil(r.seconds/60))+'′':'↗')+'</span><span><b>'+esc(r.name)+'</b><br>'+(r.reachable?'Προλαβαίνεις με περιθώριο 5 λεπτών.':'Κάλεσε για επιβεβαίωση πριν ξεκινήσεις.')+'</span><a href="'+esc(mapsLink(r))+'" target="_blank" rel="noopener" aria-label="Άνοιγμα διαδρομής">↗</a>':'Δεν υπάρχει αποτέλεσμα για αυτή τη θέση και τα φίλτρα.'}
 async function requestGeometry(){
  clearRoute();const r=state.ranked.find(r=>r.id===state.selected);if(!r||!map)return;const version=state.geometryRequest;geometryController=new AbortController();
- try{const data=await post('/api/routes',{origin:state.origin,destinations:[{lat:r.lat,lng:r.lng}],mode:state.mode,geometry:true},geometryController.signal);if(version!==state.geometryRequest)return;if(data.geometry)routeLayer=L.geoJSON(data.geometry,{style:{color:'#59d8d0',weight:4,opacity:.8},interactive:false}).addTo(map)}catch{}
+ try{const data=await post('/api/routes',{origin:state.origin,destinations:[{lat:r.lat,lng:r.lng}],mode:state.mode,geometry:true},geometryController.signal);if(version!==state.geometryRequest)return;if(data.geometry)routeLayer=L.geoJSON(data.geometry,{style:{color:'#e1bc66',weight:4,opacity:.8},interactive:false}).addTo(map)}catch{}
 }
 function showAll(){if(!map)return;follow(false);map.fitBounds(L.latLngBounds([[state.origin.lat,state.origin.lng],...state.ranked.map(r=>[r.lat,r.lng])]),{paddingTopLeft:[30,30],paddingBottomRight:[40,80],maxZoom:15,animate:!reduced})}
 function closeSuggestions(){options=[];activeOption=-1;$('#suggestions').hidden=true;$('#searchInput').setAttribute('aria-expanded','false');$('#searchInput').removeAttribute('aria-activedescendant')}
