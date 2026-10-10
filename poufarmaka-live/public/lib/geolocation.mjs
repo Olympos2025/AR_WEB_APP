@@ -1,6 +1,6 @@
 // Start during the tap, before any async permission checks. Safari's
 // Permissions API is not a reliable gate for a native location request.
-export function requestLocation(geolocation, signal) {
+export function requestLocation(geolocation, signal, {singleRequest = false} = {}) {
   return new Promise((resolve, reject) => {
     let done = false, watchId, fallbackStarted = false, lastError;
     let deadline, fallbackTimer;
@@ -25,7 +25,7 @@ export function requestLocation(geolocation, signal) {
       if (!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
           Math.abs(latitude) > 90 || Math.abs(longitude) > 180 ||
           !Number.isFinite(accuracy) || accuracy < 0) {
-        lastError = {code: 2};
+        failure({code: 2});
         return;
       }
       finish(null, position);
@@ -36,6 +36,7 @@ export function requestLocation(geolocation, signal) {
       // A denied permission is final. A watch can emit a temporary failure
       // and still deliver a position later: do not clear it on errors 2 or 3.
       if (error?.code === 1 || ![2, 3].includes(error?.code)) finish(error);
+      else if (singleRequest && fallbackStarted) finish(error);
       else fallback();
     };
     const fallback = () => {
@@ -52,9 +53,15 @@ export function requestLocation(geolocation, signal) {
     signal?.addEventListener('abort', abort, {once:true});
     // Allow time for a permission prompt and a cold GPS start, then clean up.
     deadline = setTimeout(() => finish(lastError || {code: 3}), 60000);
-    fallbackTimer = setTimeout(fallback, 12000);
+    if (!singleRequest) fallbackTimer = setTimeout(fallback, 12000);
     try {
-      if (typeof geolocation.watchPosition === 'function') {
+      if (singleRequest) {
+        // A standalone app first requests a single position directly from the
+        // activation button. Continuous tracking starts only after success.
+        // Do not issue overlapping prompts or retry a denied permission.
+        geolocation.getCurrentPosition(success, failure,
+          {enableHighAccuracy: true, timeout: 20000, maximumAge: 0});
+      } else if (typeof geolocation.watchPosition === 'function') {
         watchId = geolocation.watchPosition(success, failure,
           {enableHighAccuracy: true, timeout: 20000, maximumAge: 0});
         if (done) cleanup();

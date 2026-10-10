@@ -9,5 +9,5 @@ test('home screen mode supports iOS standalone and display-mode without assuming
 });
 test('diagnostic identifies web app without recording coordinates',()=>{
  const r=locationReport({error:{code:1},browser:'Safari',host:'example.test',secure:true,embedded:false,standalone:true,policyAllowed:null,elapsedMs:5,latitude:40,longitude:23});
- assert.match(r,/Web app αρχικής οθόνης/);assert.match(r,/PF-LOC-4/);assert.doesNotMatch(r,/latitude|longitude/);
+ assert.match(r,/Web app αρχικής οθόνης/);assert.match(r,/PF-LOC-5/);assert.doesNotMatch(r,/latitude|longitude/);
 });

@@ -18,3 +18,5 @@ Functionality ported from the Sites Farmakeia app (source version 18, commit aff
 Run `npm test` (Node standard library, no installed dependencies needed). To run the server use the existing Express dependency and `npm start`.
 
 Location tests use simulated native callbacks. Actual iOS Safari/Edge/home-screen permissions require device testing; no permission override is claimed.
+
+Home-screen location flow (PF-LOC-5): the first standalone launch waits for the location button. It calls `getCurrentPosition` synchronously from the tap and starts `watchPosition` only after the first successful fix. A local boolean remembers that standalone activation succeeded (no coordinates and no assumption that OS permission is still granted). Later launches resume automatically; denial or an explicit pause/manual origin clears that preference. Safari/browser startup behavior remains unchanged. Denial is final for that attempt, with no retry loop or alternative-origin workaround. This improves the permission-request flow but cannot override an iOS permission denial.

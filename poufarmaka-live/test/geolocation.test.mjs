@@ -86,3 +86,39 @@ test('browser restrictions are distinguished from a user refusal', () => {
   assert.equal(locationFailureCode({code: 1}, {policyAllowed: false}), 'policy');
   assert.equal(locationFailureCode({code: 1}, {secure: false}), 'secure');
 });
+
+test('installed activation makes a single synchronous request with no parallel watch or timer retry', async t => {
+  t.mock.timers.enable({apis:['setTimeout']});
+  const api=device(),request=requestLocation(api,undefined,{singleRequest:true});
+  assert.ok(api.once,'native request must be made in the button handler');
+  assert.equal(api.once.options.maximumAge,0);
+  assert.equal(api.once.options.enableHighAccuracy,true);
+  assert.equal(api.watch,undefined);
+  t.mock.timers.tick(12000);
+  assert.equal(api.fallbackCount,1,'do not overlap permission requests');
+  api.once.success(position);assert.equal(await request,position);
+});
+test('installed permission denial never retries or starts a watch', async t => {
+  t.mock.timers.enable({apis:['setTimeout']});
+  const api=device(),request=requestLocation(api,undefined,{singleRequest:true});
+  api.once.error({code:1,message:'User denied Geolocation'});
+  await assert.rejects(request,{code:1});t.mock.timers.tick(60000);
+  assert.equal(api.fallbackCount,1);assert.equal(api.watch,undefined);
+});
+test('installed temporary failure can use one sequential network fallback', async () => {
+  const api=device(),request=requestLocation(api,undefined,{singleRequest:true});
+  api.once.error({code:2});
+  assert.equal(api.fallbackCount,2);assert.equal(api.once.options.enableHighAccuracy,false);
+  api.once.success(position);assert.equal(await request,position);
+});
+test('installed repeated failure ends instead of an endless retry', async () => {
+  const api=device(),request=requestLocation(api,undefined,{singleRequest:true});
+  api.once.error({code:3});api.once.error({code:2});
+  await assert.rejects(request,{code:2});assert.equal(api.fallbackCount,2);
+});
+test('installed cancellation ignores a late permission or position callback', async () => {
+  const api=device(),controller=new AbortController();
+  const request=requestLocation(api,controller.signal,{singleRequest:true});
+  controller.abort();api.once.success(position);api.once.error({code:1});
+  await assert.rejects(request,{code:'cancelled'});assert.equal(api.watch,undefined);
+});

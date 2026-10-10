@@ -7,10 +7,12 @@ export function locationBrowser(ua = '') {
   return 'Ενσωματωμένος ή άλλος browser';
 }
 export function isStandalone({standalone=false,displayMode=false}={}) { return standalone===true || displayMode===true; }
-export function locationReport({error, browser, host, secure, embedded, policyAllowed, elapsedMs, standalone=false}) {
+export function locationReport({error, browser, host, secure, embedded, policyAllowed, elapsedMs, standalone=false, method='unknown', trigger='unknown', userActivation=null}) {
   // Exclude coordinates, IP, full UA and the page's query string.
-  return ['Farmakeia · έλεγχος PF-LOC-4',`Browser: ${browser}`,`Ιστότοπος: ${host}`,
+  return ['Farmakeia · έλεγχος PF-LOC-5',`Browser: ${browser}`,`Ιστότοπος: ${host}`,
     `Άνοιγμα: ${standalone ? 'Web app αρχικής οθόνης' : 'Browser'}`,
+    `Αίτημα: ${method}`,`Εκκίνηση: ${trigger}`,
+    `Ενεργό πάτημα: ${userActivation === null ? 'δεν αναφέρεται' : userActivation ? 'ναι' : 'όχι'}`,
     `Κωδικός: ${String(error?.code || 'unknown')}`,
     `Μήνυμα browser: ${String(error?.message || '(δεν δόθηκε)').slice(0,500)}`,
     `HTTPS: ${secure ? 'ναι' : 'όχι'}`,`Μέσα σε πλαίσιο: ${embedded ? 'ναι' : 'όχι'}`,
