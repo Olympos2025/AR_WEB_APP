@@ -1,9 +1,16 @@
 {
-  "name":"poufarmaka-live",
-  "version":"1.0.0",
-  "private":true,
-  "type":"module",
-  "scripts":{"start":"node server.js"},
-  "engines":{"node":">=22"},
-  "dependencies":{"express":"^4.21.2"}
+  "name": "poufarmaka-live",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
 }
