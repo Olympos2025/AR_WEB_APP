@@ -262,6 +262,12 @@ async function searchLane(body){
   cache.set(ck,{at:Date.now(),value});
   return {...value,cached:false,durationMs:Date.now()-started};
 }
+app.get("/pnp/diag-wp-events",async(q,r)=>{try{
+    const u="https://www.thessalonikiguide.gr/wp-json/wp/v2/event?per_page=5&_embed=1";
+    const x=await fetch(u,{signal:AbortSignal.timeout(5000),headers:{"user-agent":"PouNaPao/3.2"}});
+    const j=await x.json();
+    r.set("cache-control","no-store");r.json({status:x.status,total:x.headers.get("x-wp-total"),pages:x.headers.get("x-wp-totalpages"),sample:(Array.isArray(j)?j:[]).map(v=>({id:v.id,date:v.date,modified:v.modified,link:v.link,title:v.title,keys:Object.keys(v),meta:v.meta,acf:v.acf,yoast:v.yoast_head_json,embeddedKeys:Object.keys(v._embedded||{})}))});
+  }catch(e){r.status(500).json({error:(e?.name||"Error")+":"+clean(e?.message||e)})}});
 app.get("/pnp/diag-wp-types",async(q,r)=>{try{
     const u="https://www.thessalonikiguide.gr/wp-json/wp/v2/types";
     const x=await fetch(u,{signal:AbortSignal.timeout(4000),headers:{"user-agent":"PouNaPao/3.2"}});
