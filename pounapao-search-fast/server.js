@@ -4,7 +4,7 @@ const app = express();
 app.disable("x-powered-by");
 app.use(express.json({ limit: "512kb" }));
 
-const VERSION = "3.3.0-fast";
+const VERSION = "3.3.1-fast";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const TICKETMASTER_API_KEY = process.env.TICKETMASTER_API_KEY || "";
 const MODEL = "gpt-5.6-luna";
@@ -287,12 +287,9 @@ function wpEventItem(v){
 async function thessalonikiGuideRest(lat,lon){
   if(hav(lat,lon,40.6401,22.9444)>70)return[];
   try{
-    const base="https://www.thessalonikiguide.gr/wp-json/wp/v2/event?per_page=100&_embed=1&orderby=modified&order=desc";
-    const pages=await Promise.all([1,2].map(async page=>{try{
-      const r=await fetch(base+"&page="+page,{signal:AbortSignal.timeout(3500),headers:{"user-agent":"PouNaPao/3.3"}});
-      return r.ok?await r.json():[];
-    }catch{return[]}}));
-    const items=pages.flat().map(wpEventItem).filter(Boolean);
+    const base="https://www.thessalonikiguide.gr/wp-json/wp/v2/event?per_page=50&_embed=1&orderby=modified&order=desc";
+    let rows=[];try{const r=await fetch(base,{signal:AbortSignal.timeout(6000),headers:{"user-agent":"PouNaPao/3.3.1"}});rows=r.ok?await r.json():[]}catch{rows=[]}
+    const items=(Array.isArray(rows)?rows:[]).map(wpEventItem).filter(Boolean);
     return dedupe(items).slice(0,30);
   }catch{return[]}
 }
