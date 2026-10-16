@@ -4,7 +4,7 @@ const app = express();
 app.disable("x-powered-by");
 app.use(express.json({ limit: "512kb" }));
 
-const VERSION = "3.3.1-fast";
+const VERSION = "3.3.2-fast";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const TICKETMASTER_API_KEY = process.env.TICKETMASTER_API_KEY || "";
 const MODEL = "gpt-5.6-luna";
@@ -288,7 +288,8 @@ async function thessalonikiGuideRest(lat,lon){
   if(hav(lat,lon,40.6401,22.9444)>70)return[];
   try{
     const base="https://www.thessalonikiguide.gr/wp-json/wp/v2/event?per_page=50&_embed=1&orderby=modified&order=desc";
-    let rows=[];try{const r=await fetch(base,{signal:AbortSignal.timeout(6000),headers:{"user-agent":"PouNaPao/3.3.1"}});rows=r.ok?await r.json():[]}catch{rows=[]}
+    let rows=[];try{const r=await fetch(base,{signal:AbortSignal.timeout(6500),headers:{"user-agent":"PouNaPao/3.3.2"}});rows=r.ok?await r.json():[]}catch{rows=[]}
+    if(!Array.isArray(rows)||!rows.length){try{const r2=await fetch("https://www.thessalonikiguide.gr/wp-json/wp/v2/event?per_page=20&_embed=1&orderby=modified&order=desc",{signal:AbortSignal.timeout(4500),headers:{"user-agent":"PouNaPao/3.3.2-retry"}});rows=r2.ok?await r2.json():[]}catch{rows=[]}}
     const items=(Array.isArray(rows)?rows:[]).map(wpEventItem).filter(Boolean);
     return dedupe(items).slice(0,30);
   }catch{return[]}
@@ -312,7 +313,7 @@ async function searchLane(body){
   const locale=body.locale||"el-GR",timezone=body.timezone||"Europe/Athens";
   if(!Number.isFinite(lat)||!Number.isFinite(lon))return {lane,items:[],error:"bad_location"};
   const ck=[lane,lat.toFixed(2),lon.toFixed(2),radiusKm].join("|");
-  const hit=cache.get(ck);if(hit&&Date.now()-hit.at<5*60*1000)return {...hit.value,cached:true,durationMs:Date.now()-started};
+  const hit=cache.get(ck);if(hit&&hit.value?.items?.length&&Date.now()-hit.at<5*60*1000)return {...hit.value,cached:true,durationMs:Date.now()-started};
   const place=lane==="fast"?"":await reversePlace(lat,lon,locale);
   let items=[],error="";
   if(lane==="fast"){
@@ -326,7 +327,7 @@ async function searchLane(body){
   items=dedupe(items).map(e=>publicItem(e,lat,lon)).filter(timeRelevant).filter(e=>e.distanceKm==null||e.distanceKm<=radiusKm+3);
   items.sort((a,b)=>(a.distanceKm??999)-(b.distanceKm??999)||(parseDate(a.start)?.getTime()??1e20)-(parseDate(b.start)?.getTime()??1e20));
   const value={lane,items,error:items.length?"":error,engine:"direct",radiusKm};
-  cache.set(ck,{at:Date.now(),value});
+  if(items.length)cache.set(ck,{at:Date.now(),value});
   return {...value,cached:false,durationMs:Date.now()-started};
 }
 app.get("/pnp/diag-wp-events",async(q,r)=>{try{
