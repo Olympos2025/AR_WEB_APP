@@ -4,7 +4,7 @@ const app = express();
 app.disable("x-powered-by");
 app.use(express.json({ limit: "512kb" }));
 
-const VERSION = "3.1.0-fast";
+const VERSION = "3.2.0-fast";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const TICKETMASTER_API_KEY = process.env.TICKETMASTER_API_KEY || "";
 const MODEL = "gpt-5.6-luna";
@@ -159,6 +159,74 @@ async function artAndLife(lat,lon){
   }catch{return[]}
 }
 
+
+function guideDecode(x){return stripTags(String(x||"").replace(/&#8211;|&#8212;/g,"-").replace(/&#038;/g,"&").replace(/&hellip;/g,"..."))}
+function guideEventLinks(html){
+  const out=[],seen=new Set();
+  for(const m of String(html||"").matchAll(/href\s*=\s*["'](https?:\/\/(?:www\.)?thessalonikiguide\.gr\/event\/[^"'?#/]+\/?)["']/gi)){
+    const u=m[1].replace(/^http:/,"https:");
+    if(!seen.has(u)){seen.add(u);out.push(u)}
+  }
+  for(const m of String(html||"").matchAll(/href\s*=\s*["'](\/event\/[^"'?#/]+\/?)["']/gi)){
+    const u=new URL(m[1],"https://www.thessalonikiguide.gr").href;
+    if(!seen.has(u)){seen.add(u);out.push(u)}
+  }
+  return out;
+}
+function allLdEvents(html){
+  const out=[];
+  for(const m of String(html||"").matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)){
+    try{
+      const j=JSON.parse(m[1]);
+      const nodes=flattenLd(j,[]);
+      for(const x of nodes){const t=x?.["@type"];if(t==="Event"||(Array.isArray(t)&&t.includes("Event")))out.push(x)}
+    }catch{}
+  }
+  return out;
+}
+function guideDateTimeFallback(html){
+  const text=guideDecode(html);
+  const m=text.match(/(?:Ημέρες\s*&\s*Ώρες|Ημέρες και Ώρες)[\s\S]{0,220}?(\d{1,2})[:.](\d{2})/i);
+  return m?(m[1].padStart(2,"0")+":"+m[2]):"";
+}
+async function guideDetail(url){
+  try{
+    const r=await fetch(url,{signal:AbortSignal.timeout(2600),headers:{"user-agent":"Mozilla/5.0 PouNaPao/3.2","accept-language":"el-GR,el;q=0.9,en;q=0.8"}});
+    if(!r.ok)return null;
+    const html=await r.text(),lds=allLdEvents(html),ld=lds[0]||{};
+    const title=clean(ld.name)||guideDecode((html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)||[])[1])||clean(metaTag(html,"og:title"));
+    if(!title)return null;
+    const loc=ld.location||{},geo=loc.geo||{};
+    let start=clean(ld.startDate),end=clean(ld.endDate);
+    const fallbackTime=guideDateTimeFallback(html);
+    if(start&&fallbackTime&&!/T\d{2}:\d{2}/.test(start)){
+      const d=start.slice(0,10); if(/^\d{4}-\d{2}-\d{2}$/.test(d))start=d+"T"+fallbackTime+":00+03:00";
+    }
+    const desc=clean(ld.description||metaTag(html,"og:description"));
+    const text=guideDecode(html);
+    let eventType=/DJ\s*set|party|club|nightlife/i.test(text)?"Party/DJ":/Συναυλ|Live|concert/i.test(text)?"Live":/festival|Φεστιβάλ/i.test(text)?"Φεστιβάλ":"Event";
+    let category=/Μουσικ|DJ|Live|Συναυλ|concert|party/i.test(text)?"Μουσική":/θέατρ|theatre/i.test(text)?"Πολιτισμός":"Άλλο";
+    return {title,venue:clean(loc.name),address:addressText(loc.address),start,end,acts:"",description:desc.slice(0,160),eventType,category,url:clean(ld.url)||url,sourceName:"ThessalonikiGuide",venueUrl:"",imageUrl:imageFromLd(ld)||clean(metaTag(html,"og:image")),lat:geo.latitude,lon:geo.longitude};
+  }catch{return null}
+}
+async function thessalonikiGuide(lat,lon){
+  if(hav(lat,lon,40.6401,22.9444)>70)return[];
+  const urls=[
+    "https://www.thessalonikiguide.gr/events/nightlife/",
+    "https://www.thessalonikiguide.gr/saturday/",
+    "https://www.thessalonikiguide.gr/event/"
+  ];
+  try{
+    const pages=await Promise.all(urls.map(async u=>{try{const r=await fetch(u,{signal:AbortSignal.timeout(2600),headers:{"user-agent":"Mozilla/5.0 PouNaPao/3.2","accept-language":"el-GR,el;q=0.9,en;q=0.8"}});return r.ok?await r.text():""}catch{return""}}));
+    const links=[],seen=new Set();
+    for(const html of pages){for(const u of guideEventLinks(html)){if(!seen.has(u)){seen.add(u);links.push(u)}}}
+    const preferred=links.slice(0,28);
+    const settled=await Promise.allSettled(preferred.map(guideDetail));
+    const items=settled.filter(x=>x.status==="fulfilled"&&x.value).map(x=>x.value);
+    return dedupe(items).filter(timeRelevant).slice(0,18);
+  }catch{return[]}
+}
+
 function promptFor(lane,place,lat,lon,radiusKm,locale,timezone){
   const common =
     "Current UTC time: "+new Date().toISOString()+". Coordinates: "+lat+","+lon+". Place: "+place+
@@ -181,7 +249,7 @@ async function searchLane(body){
   const place=lane==="fast"?"":await reversePlace(lat,lon,locale);
   let items=[],error="";
   if(lane==="fast"){
-    const [tm,local]=await Promise.all([ticketmaster(lat,lon,radiusKm),artAndLife(lat,lon)]);
+    const [tm,local]=await Promise.all([ticketmaster(lat,lon,radiusKm),thessalonikiGuide(lat,lon)]);
     items=[...tm,...local];error="";
   }else{
     const ms=lane==="social"?14000:lane==="food"?10000:12000;
@@ -216,6 +284,7 @@ app.post("/pnp/events",async(q,r)=>{
   const items=dedupe(rs.flatMap(x=>x.items)).map(e=>publicItem(e,lat,lon)).filter(timeRelevant);
   r.set("cache-control","no-store");r.json({items,version:VERSION,errors:rs.map(x=>x.error).filter(Boolean)});
 });
+app.get("/pnp/diag-fast-thess",async(q,r)=>{const t=Date.now(),items=await thessalonikiGuide(40.6401,22.9444);r.set("cache-control","no-store");r.json({version:VERSION,count:items.length,durationMs:Date.now()-t,sample:items.slice(0,10).map(x=>({title:x.title,venue:x.venue,start:x.start,source:x.sourceName,url:x.url,image:!!x.imageUrl}))})});
 app.get("/pnp/diag-thess",async(q,r)=>{
   const body={lat:40.6401,lon:22.9444,radiusKm:30,locale:"el-GR",timezone:"Europe/Athens"};
   const t=Date.now(),rs=await Promise.all(["fast","events","social","food"].map(lane=>searchLane({...body,lane})));
