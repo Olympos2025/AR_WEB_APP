@@ -4,7 +4,7 @@ const app = express();
 app.disable("x-powered-by");
 app.use(express.json({ limit: "512kb" }));
 
-const VERSION = "3.3.2-fast";
+const VERSION = "3.3.3-fast";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const TICKETMASTER_API_KEY = process.env.TICKETMASTER_API_KEY || "";
 const MODEL = "gpt-5.6-luna";
@@ -282,7 +282,7 @@ function wpEventItem(v){
   if(/^\d{4}-\d{2}-\d{2}T/.test(start)&&!/[+-]\d{2}:\d{2}$|Z$/.test(start))start+="+03:00";
   let end="";
   if(occ.end&&/^\d{1,2}:\d{2}/.test(occ.end))end=occ.day+"T"+occ.end.padStart(5,"0")+":00+03:00";
-  return {title,venue,address,start,end,acts:"",description:desc,eventType,category,url:v.link,sourceName:"ThessalonikiGuide",venueUrl:"",imageUrl:img,lat:emb.lat,lon:emb.lon};
+  return {title,venue,address,start,end,acts:"",description:desc,eventType,category,url:v.link,sourceName:"ThessalonikiGuide",venueUrl:"",imageUrl:img,lat:null,lon:null};
 }
 async function thessalonikiGuideRest(lat,lon){
   if(hav(lat,lon,40.6401,22.9444)>70)return[];
@@ -324,7 +324,7 @@ async function searchLane(body){
     const web=await askWeb(promptFor(lane,place,lat,lon,radiusKm,locale,timezone),ms,lane==="events"?12:10);
     items=web.items;error=web.error;
   }
-  items=dedupe(items).map(e=>publicItem(e,lat,lon)).filter(timeRelevant).filter(e=>e.distanceKm==null||e.distanceKm<=radiusKm+3);
+  items=dedupe(items).map(e=>publicItem(e,lat,lon)).filter(timeRelevant).filter(e=>e.sourceName==="ThessalonikiGuide"||e.distanceKm==null||e.distanceKm<=radiusKm+3);
   items.sort((a,b)=>(a.distanceKm??999)-(b.distanceKm??999)||(parseDate(a.start)?.getTime()??1e20)-(parseDate(b.start)?.getTime()??1e20));
   const value={lane,items,error:items.length?"":error,engine:"direct",radiusKm};
   if(items.length)cache.set(ck,{at:Date.now(),value});
