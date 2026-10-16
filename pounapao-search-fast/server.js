@@ -194,6 +194,13 @@ async function searchLane(body){
   cache.set(ck,{at:Date.now(),value});
   return {...value,cached:false,durationMs:Date.now()-started};
 }
+app.get("/pnp/debug-art",async(q,r)=>{try{
+    const u="https://www.artandlife.gr/thessaloniki/events?date="+encodeURIComponent(athensDateParam());
+    const x=await fetch(u,{signal:AbortSignal.timeout(5000),headers:{"user-agent":"Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1","accept-language":"el-GR,el;q=0.9,en;q=0.8"}});
+    const html=await x.text();
+    const hrefs=[...html.matchAll(/href\s*=\s*["']([^"']+)["']/gi)].slice(0,40).map(m=>m[1]);
+    r.set("cache-control","no-store");r.json({status:x.status,length:html.length,url:x.url,hasEventsPath:/\/thessaloniki\/events\//i.test(html),hrefs,sample:html.slice(0,6000)});
+  }catch(e){r.status(500).json({error:(e?.name||"Error")+":"+clean(e?.message||e)})}});
 app.get("/pnp/health",(q,r)=>r.json({ok:true,version:VERSION,openai:!!OPENAI_API_KEY,ticketmaster:!!TICKETMASTER_API_KEY,direct:true}));
 app.post("/pnp/search-lane",async(q,r)=>{r.set("cache-control","no-store");r.json(await searchLane(q.body||{}));});
 app.post("/pnp/events",async(q,r)=>{
