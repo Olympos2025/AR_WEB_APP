@@ -15,7 +15,7 @@ const HOME=readFileSync(join(DIR,'public','index.html'),'utf8');
 const GATEWAY_MODEL='perplexity/sonar';
 const LOOKBACK_HOURS=8;
 const MAX_RADIUS=80;
-const VERSION='2.6.0';
+const VERSION='2.7.0';
 const gc=new Map(), rc=new Map(), pc=new Map(), laneCache=new Map(), reverseInflight=new Map();
 const CACHE_TTL_MS=5*60*1000;
 const clean=s=>String(s??'').trim();
