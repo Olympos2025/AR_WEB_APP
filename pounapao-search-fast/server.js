@@ -4,7 +4,7 @@ const app = express();
 app.disable("x-powered-by");
 app.use(express.json({ limit: "512kb" }));
 
-const VERSION = "3.2.0-fast";
+const VERSION = "3.3.0-fast";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const TICKETMASTER_API_KEY = process.env.TICKETMASTER_API_KEY || "";
 const MODEL = "gpt-5.6-luna";
@@ -227,6 +227,76 @@ async function thessalonikiGuide(lat,lon){
   }catch{return[]}
 }
 
+
+function wpText(x){return stripTags(String(x||"").replace(/&#8211;|&#8212;/g,"-").replace(/&#038;/g,"&").replace(/&hellip;/g,"..."))}
+function athensYmd(ms=Date.now()){
+  const p=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Athens",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date(ms));
+  const o={};for(const x of p)o[x.type]=x.value;return o.year+"-"+o.month+"-"+o.day;
+}
+function compactYmd(x){x=clean(x);return /^\d{8}$/.test(x)?x.slice(0,4)+"-"+x.slice(4,6)+"-"+x.slice(6,8):x.slice(0,10)}
+function embeddedVenue(post){
+  const raw=post?._embedded?.["acf:post"];
+  const arr=Array.isArray(raw)?raw.flat(Infinity).filter(Boolean):[];
+  const v=arr.find(x=>x&&typeof x==="object")||{};
+  const a=v.acf||{};
+  const loc=a.location||a.google_map||a.map||{};
+  return {
+    name:wpText(v?.title?.rendered||v?.name||""),
+    address:wpText(a.address||a.place_address||a.location_address||""),
+    lat:Number.isFinite(+a.lat)?+a.lat:Number.isFinite(+a.latitude)?+a.latitude:Number.isFinite(+loc.lat)?+loc.lat:null,
+    lon:Number.isFinite(+a.lng)?+a.lng:Number.isFinite(+a.lon)?+a.lon:Number.isFinite(+a.longitude)?+a.longitude:Number.isFinite(+loc.lng)?+loc.lng:null
+  };
+}
+function occurrenceForNow(acf){
+  const today=athensYmd(),tomorrow=athensYmd(Date.now()+24*3600000),yesterday=athensYmd(Date.now()-24*3600000);
+  const reps=Array.isArray(acf?.dates_times_rep)?acf.dates_times_rep:[];
+  const candidates=[];
+  for(const x of reps){
+    const raw=clean(x?.ev_dates_sub); if(!raw)continue;
+    const day=raw.slice(0,10),tm=raw.slice(11,19)||"00:00:00";
+    if(day===today||day===tomorrow||(day===yesterday&&tm>="18:00:00"))candidates.push({raw,day,tm,end:clean(x?.ev_endtime_sub)});
+  }
+  candidates.sort((a,b)=>a.raw.localeCompare(b.raw));
+  if(candidates.length){
+    const nowWall=new Intl.DateTimeFormat("sv-SE",{timeZone:"Europe/Athens",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).format(new Date()).replace(",","");
+    const upcoming=candidates.find(x=>x.raw>=nowWall);
+    return upcoming||candidates[candidates.length-1];
+  }
+  const start=compactYmd(acf?.start_date),end=compactYmd(acf?.end_date);
+  if(start&&end&&start<=tomorrow&&end>=yesterday)return{raw:start+" 00:00:00",day:start,tm:"00:00:00",end:""};
+  return null;
+}
+function wpEventItem(v){
+  const acf=v?.acf||{},occ=occurrenceForNow(acf);if(!occ)return null;
+  const emb=embeddedVenue(v),yo=v?.yoast_head_json||{};
+  const venue=wpText(acf.place_name)||emb.name;
+  const address=[wpText(acf.rel_place_address)||emb.address,wpText(acf.rel_place_locality),wpText(acf.rel_place_region)].filter(Boolean).join(", ");
+  const title=wpText(acf.only_event_title)||wpText(v?.title?.rendered);
+  if(!title||!v?.link)return null;
+  const desc=wpText(yo.description||acf.ev_red_info||v?.excerpt?.rendered).slice(0,160);
+  const all=(title+" "+desc+" "+wpText(v?.content?.rendered)).slice(0,5000);
+  const eventType=/DJ\s*set|party|club|nightlife/i.test(all)?"Party/DJ":/Συναυλ|Live|concert|μουσικ/i.test(all)?"Live":/festival|Φεστιβάλ/i.test(all)?"Φεστιβάλ":/θέατρ|παράσταση/i.test(all)?"Θέατρο":"Event";
+  const category=/Μουσικ|DJ|Live|Συναυλ|concert|party/i.test(all)?"Μουσική":/θέατρ|παράσταση/i.test(all)?"Πολιτισμός":"Άλλο";
+  const img=yo?.og_image?.[0]?.url||v?._embedded?.["wp:featuredmedia"]?.[0]?.source_url||"";
+  let start=occ.raw.replace(" ","T");
+  if(/^\d{4}-\d{2}-\d{2}T/.test(start)&&!/[+-]\d{2}:\d{2}$|Z$/.test(start))start+="+03:00";
+  let end="";
+  if(occ.end&&/^\d{1,2}:\d{2}/.test(occ.end))end=occ.day+"T"+occ.end.padStart(5,"0")+":00+03:00";
+  return {title,venue,address,start,end,acts:"",description:desc,eventType,category,url:v.link,sourceName:"ThessalonikiGuide",venueUrl:"",imageUrl:img,lat:emb.lat,lon:emb.lon};
+}
+async function thessalonikiGuideRest(lat,lon){
+  if(hav(lat,lon,40.6401,22.9444)>70)return[];
+  try{
+    const base="https://www.thessalonikiguide.gr/wp-json/wp/v2/event?per_page=100&_embed=1&orderby=modified&order=desc";
+    const pages=await Promise.all([1,2].map(async page=>{try{
+      const r=await fetch(base+"&page="+page,{signal:AbortSignal.timeout(3500),headers:{"user-agent":"PouNaPao/3.3"}});
+      return r.ok?await r.json():[];
+    }catch{return[]}}));
+    const items=pages.flat().map(wpEventItem).filter(Boolean);
+    return dedupe(items).slice(0,30);
+  }catch{return[]}
+}
+
 function promptFor(lane,place,lat,lon,radiusKm,locale,timezone){
   const common =
     "Current UTC time: "+new Date().toISOString()+". Coordinates: "+lat+","+lon+". Place: "+place+
@@ -249,7 +319,7 @@ async function searchLane(body){
   const place=lane==="fast"?"":await reversePlace(lat,lon,locale);
   let items=[],error="";
   if(lane==="fast"){
-    const [tm,local]=await Promise.all([ticketmaster(lat,lon,radiusKm),thessalonikiGuide(lat,lon)]);
+    const [tm,local]=await Promise.all([ticketmaster(lat,lon,radiusKm),thessalonikiGuideRest(lat,lon)]);
     items=[...tm,...local];error="";
   }else{
     const ms=lane==="social"?14000:lane==="food"?10000:12000;
@@ -296,7 +366,7 @@ app.post("/pnp/events",async(q,r)=>{
   const items=dedupe(rs.flatMap(x=>x.items)).map(e=>publicItem(e,lat,lon)).filter(timeRelevant);
   r.set("cache-control","no-store");r.json({items,version:VERSION,errors:rs.map(x=>x.error).filter(Boolean)});
 });
-app.get("/pnp/diag-fast-thess",async(q,r)=>{const t=Date.now(),items=await thessalonikiGuide(40.6401,22.9444);r.set("cache-control","no-store");r.json({version:VERSION,count:items.length,durationMs:Date.now()-t,sample:items.slice(0,10).map(x=>({title:x.title,venue:x.venue,start:x.start,source:x.sourceName,url:x.url,image:!!x.imageUrl}))})});
+app.get("/pnp/diag-fast-thess",async(q,r)=>{const t=Date.now(),items=await thessalonikiGuideRest(40.6401,22.9444);r.set("cache-control","no-store");r.json({version:VERSION,count:items.length,durationMs:Date.now()-t,sample:items.slice(0,10).map(x=>({title:x.title,venue:x.venue,start:x.start,source:x.sourceName,url:x.url,image:!!x.imageUrl}))})});
 app.get("/pnp/diag-thess",async(q,r)=>{
   const body={lat:40.6401,lon:22.9444,radiusKm:30,locale:"el-GR",timezone:"Europe/Athens"};
   const t=Date.now(),rs=await Promise.all(["fast","events","social","food"].map(lane=>searchLane({...body,lane})));
