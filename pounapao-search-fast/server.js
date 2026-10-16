@@ -4,7 +4,7 @@ const app = express();
 app.disable("x-powered-by");
 app.use(express.json({ limit: "512kb" }));
 
-const VERSION = "3.0.0-fast";
+const VERSION = "3.1.0-fast";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const TICKETMASTER_API_KEY = process.env.TICKETMASTER_API_KEY || "";
 const MODEL = "gpt-5.6-luna";
@@ -113,6 +113,52 @@ async function ticketmaster(lat,lon,radiusKm){
     });
   }catch{return []}
 }
+
+function stripTags(x){return clean(String(x||"").replace(/<script[\s\S]*?<\/script>/gi," ").replace(/<style[\s\S]*?<\/style>/gi," ").replace(/<[^>]+>/g," ").replace(/&nbsp;/g," ").replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/\s+/g," "))}
+function metaTag(html,key){
+  const a=new RegExp('<meta[^>]+(?:property|name)=["\\\']'+key+'["\\\'][^>]+content=["\\\']([^"\\\']+)["\\\']','i');
+  const b=new RegExp('<meta[^>]+content=["\\\']([^"\\\']+)["\\\'][^>]+(?:property|name)=["\\\']'+key+'["\\\']','i');
+  return (html.match(a)||html.match(b)||[])[1]||"";
+}
+function flattenLd(v,out=[]){if(Array.isArray(v)){for(const x of v)flattenLd(x,out);return out}if(v&&typeof v==="object"){out.push(v);if(v["@graph"])flattenLd(v["@graph"],out)}return out}
+function ldEvent(html){
+  const scripts=[...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
+  for(const m of scripts){try{const j=JSON.parse(m[1]),all=flattenLd(j,[]);for(const x of all){const t=x["@type"];if(t==="Event"||(Array.isArray(t)&&t.includes("Event")))return x}}catch{}}
+  return null;
+}
+function addressText(a){if(!a)return"";if(typeof a==="string")return a;return [a.streetAddress,a.addressLocality,a.addressRegion,a.postalCode,a.addressCountry].filter(Boolean).join(", ")}
+function imageFromLd(x){const im=x?.image;if(typeof im==="string")return im;if(Array.isArray(im)){const v=im[0];return typeof v==="string"?v:(v?.url||"")}return im?.url||""}
+async function artDetail(url){
+  try{
+    const r=await fetch(url,{signal:AbortSignal.timeout(2200),headers:{"user-agent":"Mozilla/5.0 PouNaPao/3.1"}});
+    if(!r.ok)return null;const html=await r.text(),ld=ldEvent(html);
+    const title=clean(ld?.name)||stripTags((html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)||[])[1])||clean(metaTag(html,"og:title"));
+    if(!title)return null;
+    const loc=ld?.location||{},geo=loc?.geo||{};
+    const text=stripTags(html);
+    const music=/Μουσική|Συναυλίες|Live|DJ sets|concert|rock|jazz/i.test(text);
+    const type=/DJ sets/i.test(text)?"DJ set":/Συναυλίες|Live|concert/i.test(text)?"Live":"Event";
+    return {title,venue:clean(loc?.name),address:addressText(loc?.address),start:clean(ld?.startDate),end:clean(ld?.endDate),acts:"",description:clean(ld?.description||metaTag(html,"og:description")).slice(0,160),eventType:type,category:music?"Μουσική":"Πολιτισμός",url:clean(ld?.url)||url,sourceName:"Art&Life",venueUrl:"",imageUrl:imageFromLd(ld)||clean(metaTag(html,"og:image")),lat:geo?.latitude,lon:geo?.longitude};
+  }catch{return null}
+}
+function athensDateParam(){
+  const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/Athens",day:"2-digit",month:"2-digit",year:"numeric"}).formatToParts(new Date());
+  const o={};for(const p of parts)o[p.type]=p.value;return o.day+"/"+o.month+"/"+o.year;
+}
+async function artAndLife(lat,lon){
+  if(hav(lat,lon,40.6401,22.9444)>70)return[];
+  const date=athensDateParam();
+  const urls=["https://www.artandlife.gr/thessaloniki/events?date="+encodeURIComponent(date),"https://www.artandlife.gr/thessaloniki/concerts_-_live"];
+  try{
+    const pages=await Promise.all(urls.map(async u=>{try{const r=await fetch(u,{signal:AbortSignal.timeout(1800),headers:{"user-agent":"Mozilla/5.0 PouNaPao/3.1"}});return r.ok?await r.text():""}catch{return""}}));
+    const links=[],seen=new Set();
+    for(const html of pages){for(const m of html.matchAll(/href\s*=\s*["']([^"']*\/thessaloniki\/events\/[^"'?#]+)["']/gi)){try{const u=new URL(m[1],"https://www.artandlife.gr").href;if(!seen.has(u)){seen.add(u);links.push(u)}}catch{}}}
+    const chosen=links.slice(0,18);
+    const items=(await Promise.all(chosen.map(artDetail))).filter(Boolean);
+    return dedupe(items).slice(0,14);
+  }catch{return[]}
+}
+
 function promptFor(lane,place,lat,lon,radiusKm,locale,timezone){
   const common =
     "Current UTC time: "+new Date().toISOString()+". Coordinates: "+lat+","+lon+". Place: "+place+
@@ -135,10 +181,10 @@ async function searchLane(body){
   const place=lane==="fast"?"":await reversePlace(lat,lon,locale);
   let items=[],error="";
   if(lane==="fast"){
-    const [tm,web]=await Promise.all([ticketmaster(lat,lon,radiusKm),askWeb(promptFor("fast",place,lat,lon,radiusKm,locale,timezone),3800,8)]);
-    items=[...tm,...web.items];error=web.error;
+    const [tm,local]=await Promise.all([ticketmaster(lat,lon,radiusKm),artAndLife(lat,lon)]);
+    items=[...tm,...local];error="";
   }else{
-    const ms=lane==="social"?6000:lane==="food"?5000:5000;
+    const ms=lane==="social"?14000:lane==="food"?10000:12000;
     const web=await askWeb(promptFor(lane,place,lat,lon,radiusKm,locale,timezone),ms,lane==="events"?12:10);
     items=web.items;error=web.error;
   }
