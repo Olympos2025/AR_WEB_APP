@@ -16,10 +16,11 @@ const GATEWAY_MODEL='perplexity/sonar';
 let lastSearchError='';
 let lastLegacyError='';
 const LEGACY_SEARCH_URL='https://pnp-legacy-search.vercel.app/pnp/events';
+const DIRECT_SEARCH_BASE='https://pnp-legacy-search.vercel.app';
 const legacyCache=new Map(),legacyInflight=new Map();
 const LOOKBACK_HOURS=8;
 const MAX_RADIUS=80;
-const VERSION='2.7.3';
+const VERSION='2.7.4';
 const gc=new Map(), rc=new Map(), pc=new Map(), laneCache=new Map(), reverseInflight=new Map();
 const CACHE_TTL_MS=5*60*1000;
 const clean=s=>String(s??'').trim();
@@ -99,32 +100,27 @@ function lanePrompt({lane,place,lat,lon,radiusKm,locale,timezone}){
  return `${common}\nTASK: ${lanes[lane]||lanes.events}\nReturn up to 10 high-confidence items. Prioritize accuracy and speed over exhaustiveness.`;
 }
 async function searchLane(body){
-  const started=Date.now(),lat=+body.lat,lon=+body.lon,radiusKm=clamp(+body.radiusKm||20,5,MAX_RADIUS),locale=body.locale||'en',timezone=body.timezone||'UTC',lane=clean(body.lane||'events');
-  if(!Number.isFinite(lat)||!Number.isFinite(lon))throw new Error('bad_location');
-  const bucket=`${(+lat).toFixed(2)}|${(+lon).toFixed(2)}|${radiusKm}|${locale}|${lane}`;
-  const cached=laneCache.get(bucket);
-  if(cached && Date.now()-cached.at<CACHE_TTL_MS) return {...cached.value,cached:true,durationMs:Date.now()-started};
-  const blankPlace={city:'',region:'',country:'',countryCode:'',display:''};
-  const place=lane==='fast'?blankPlace:await Promise.race([reverseGeocode(lat,lon,locale),new Promise(resolve=>setTimeout(()=>resolve(blankPlace),650))]);
-  let raw=[];
-  if(lane==='fast') raw=await ticketmaster(lat,lon,radiusKm);
-  else {
-    const timeout=lane==='social'?6200:lane==='food'?5000:4600;
-    raw=await openaiSearch(lanePrompt({lane,place,lat,lon,radiusKm,locale,timezone}),10,timeout);
-  }
-  let engine='gateway';
-  if(!raw.length){const fallback=await legacySearch({lat,lon,radiusKm,locale,timezone});raw=legacyLane(fallback,lane);if(raw.length)engine='legacy-fallback'}
-  let items=dedupe(raw).map(e=>publicItem(e,lat,lon)).filter(e=>timeRelevant(e)).filter(e=>e.distanceKm==null||e.distanceKm<=radiusKm+2);
-  items.sort((a,b)=>(a.distanceKm??999)-(b.distanceKm??999)||(parseDate(a.start)?.getTime()??1e20)-(parseDate(b.start)?.getTime()??1e20));
-  const value={lane,place,radiusKm,items:sourceDiverse(items,2),lookbackHours:LOOKBACK_HOURS,engine,error:items.length?'':(lastSearchError||lastLegacyError||'no_results')};
-  laneCache.set(bucket,{at:Date.now(),value});
-  return {...value,cached:false,durationMs:Date.now()-started};
+  const started=Date.now(),lane=clean(body?.lane||'events');
+  const timeoutMs=lane==='fast'?8000:lane==='social'?19000:lane==='food'?16000:17000;
+  const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),timeoutMs);
+  try{
+    const r=await fetch(DIRECT_SEARCH_BASE+'/pnp/search-lane',{
+      method:'POST',signal:ctl.signal,
+      headers:{'content-type':'application/json','user-agent':'PouNaPao/'+VERSION+' direct'},
+      body:JSON.stringify(body||{})
+    });
+    if(!r.ok)throw new Error('direct_http_'+r.status);
+    const j=await r.json();
+    return {...j,engine:j.engine||'direct-backend',durationMs:Date.now()-started};
+  }catch(e){
+    return {lane,items:[],engine:'direct-backend',error:(e?.name||'Error')+': '+clean(e?.message||e).slice(0,180),durationMs:Date.now()-started};
+  }finally{clearTimeout(timer)}
 }
 
 function safeRemote(u){try{const x=new URL(u);if(!['http:','https:'].includes(x.protocol))return false;const h=x.hostname.toLowerCase();if(h==='localhost'||h.endsWith('.local')||net.isIP(h))return false;return true}catch{return false}}
 async function metaImage(u){if(!safeRemote(u))return null;try{const h=hostOf(u);const addrs=await dns.lookup(h,{all:true});if(addrs.some(a=>net.isIP(a.address)))return null;const r=await fetch(u,{redirect:'follow',signal:AbortSignal.timeout(2600),headers:{'user-agent':`Mozilla/5.0 PouNaPao/${VERSION}`}});if(!r.ok)return null;const type=r.headers.get('content-type')||'';if(type.startsWith('image/'))return{mediaUrl:r.url,mediaType:'image'};const html=(await r.text()).slice(0,350000);const pats=[/<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)/i,/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image/i,/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)/i,/<link[^>]+rel=["']image_src["'][^>]+href=["']([^"']+)/i];for(const p of pats){const m=html.match(p);if(m?.[1])return{mediaUrl:new URL(m[1],r.url).href,mediaType:'image'}}return null}catch{return null}}
 app.get('/',(q,r)=>{r.set('cache-control','no-store');r.set('permissions-policy','geolocation=(self)');r.type('html').send(HOME)});
-app.get('/pnp/health',(q,r)=>r.json({ok:true,version:VERSION,staged:true,socialDiscovery:true,ongoing:true,lookbackHours:LOOKBACK_HOURS,search:true,ticketing:false,gateway:true,legacyFallback:true}));
+app.get('/pnp/health',(q,r)=>r.json({ok:true,version:VERSION,staged:true,socialDiscovery:true,ongoing:true,lookbackHours:LOOKBACK_HOURS,search:true,directBackend:true,gateway:false}));
 app.get('/pnp/diag',async(q,r)=>{let probe={ok:false,error:''};try{const x=await generateText({model:GATEWAY_MODEL,prompt:'Reply with exactly OK',maxOutputTokens:8});probe={ok:/OK/i.test(x.text||''),text:clean(x.text).slice(0,40)}}catch(e){probe={ok:false,error:(e?.name||'Error')+': '+clean(e?.message||e).slice(0,300)}}r.set('cache-control','no-store');r.json({version:VERSION,model:GATEWAY_MODEL,probe,lastSearchError,lastLegacyError,legacyFallback:true})});
 app.get('/pnp/diag-thess',async(q,r)=>{const t=Date.now(),items=await legacySearch({lat:40.6401,lon:22.9444,radiusKm:30,locale:'el-GR',timezone:'Europe/Athens'});r.set('cache-control','no-store');r.json({version:VERSION,count:items.length,durationMs:Date.now()-t,sample:items.slice(0,5).map(x=>({title:x.title,venue:x.venue,start:x.start,source:x.sourceName})),lastLegacyError})});
 app.get('/pnp/config',(q,r)=>r.json({radiusKm:5,autoRadii:[5,20,30],maxRadiusKm:MAX_RADIUS,lookbackHours:LOOKBACK_HOURS,version:VERSION}));
