@@ -194,6 +194,12 @@ async function searchLane(body){
   cache.set(ck,{at:Date.now(),value});
   return {...value,cached:false,durationMs:Date.now()-started};
 }
+app.get("/pnp/debug-guide",async(q,r)=>{try{
+    const urls=["https://www.thessalonikiguide.gr/event/","https://www.thessalonikiguide.gr/saturday/","https://www.thessalonikiguide.gr/wp-json/wp/v2/types"];
+    const out=[];
+    for(const u of urls){try{const x=await fetch(u,{signal:AbortSignal.timeout(4500),headers:{"user-agent":"Mozilla/5.0 PouNaPao/3.1","accept-language":"el-GR,el;q=0.9,en;q=0.8"}});const t=await x.text();out.push({url:u,status:x.status,length:t.length,contentType:x.headers.get("content-type"),sample:t.slice(0,1200),hasEventLinks:/\/event\//i.test(t)})}catch(e){out.push({url:u,error:(e?.name||"Error")+":"+clean(e?.message||e)})}}
+    r.set("cache-control","no-store");r.json({out});
+  }catch(e){r.status(500).json({error:(e?.name||"Error")+":"+clean(e?.message||e)})}});
 app.get("/pnp/debug-art",async(q,r)=>{try{
     const u="https://www.artandlife.gr/thessaloniki/events?date="+encodeURIComponent(athensDateParam());
     const x=await fetch(u,{signal:AbortSignal.timeout(5000),headers:{"user-agent":"Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1","accept-language":"el-GR,el;q=0.9,en;q=0.8"}});
