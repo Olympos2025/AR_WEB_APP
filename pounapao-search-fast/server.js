@@ -262,6 +262,12 @@ async function searchLane(body){
   cache.set(ck,{at:Date.now(),value});
   return {...value,cached:false,durationMs:Date.now()-started};
 }
+app.get("/pnp/diag-wp-types",async(q,r)=>{try{
+    const u="https://www.thessalonikiguide.gr/wp-json/wp/v2/types";
+    const x=await fetch(u,{signal:AbortSignal.timeout(4000),headers:{"user-agent":"PouNaPao/3.2"}});
+    const j=await x.json();
+    r.set("cache-control","no-store");r.json({types:Object.entries(j).map(([key,v])=>({key,name:v?.name,slug:v?.slug,rest_base:v?.rest_base,rest_namespace:v?.rest_namespace})).filter(x=>/event|εκδηλ|agenda/i.test([x.key,x.name,x.slug,x.rest_base].join(" ")))});
+  }catch(e){r.status(500).json({error:(e?.name||"Error")+":"+clean(e?.message||e)})}});
 app.get("/pnp/debug-guide",async(q,r)=>{try{
     const urls=["https://www.thessalonikiguide.gr/event/","https://www.thessalonikiguide.gr/saturday/","https://www.thessalonikiguide.gr/wp-json/wp/v2/types"];
     const out=[];
